@@ -3,7 +3,6 @@ package guiAdminHome;
 import database.Database;
 import emailAddressValidator.EmailAddressRecognizer;
 import javafx.scene.control.Label;
-<<<<<<< HEAD
 import guiListUsers.ViewListUsers;
 import javafx.scene.control.TextInputDialog;
 import javafx.scene.control.Alert;
