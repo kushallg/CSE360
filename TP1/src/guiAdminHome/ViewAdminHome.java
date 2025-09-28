@@ -78,6 +78,12 @@ public class ViewAdminHome {
 		
 		if (theView == null) theView = new ViewAdminHome();
 		
+		// *** NEW: This is the fix for the bug. ***
+        // This line was moved from the constructor to this method.
+        // It now correctly sets the user's name on the label because the 'theUser' object
+        // has just been assigned from the 'user' parameter passed into this method.
+        label_UserDetails.setText("User: " + theUser.getUserName());
+		
 		theDatabase.getUserAccountDetails(user.getUserName());
 		applicationMain.FoundationsMain.activeHomePage = theRole;
 				
@@ -93,7 +99,8 @@ public class ViewAdminHome {
 		label_PageTitle.setText("Admin Home Page");
 		setupLabelUI(label_PageTitle, "Arial", 28, width, Pos.CENTER, 0, 5);
 
-		label_UserDetails.setText("User: " + theUser.getUserName());
+		// *** NEW: This line was moved from here to the displayAdminHome method. ***
+		// label_UserDetails.setText("User: " + theUser.getUserName());
 		setupLabelUI(label_UserDetails, "Arial", 20, width, Pos.BASELINE_LEFT, 20, 55);
 		
 		setupButtonUI(button_UpdateThisUser, "Dialog", 18, 170, Pos.CENTER, 610, 45);

@@ -98,6 +98,10 @@ public class ViewMultipleRoleDispatch {
 		
 		if (theView == null) theView = new ViewMultipleRoleDispatch();
 		
+		// *** FIX ***: The user details label is now set here, after 'theUser' has been assigned.
+        // This ensures that the correct username is fetched and displayed on the UI.
+        label_UserDetails.setText("User: " + theUser.getUserName());
+		
 		// Populate the dynamic aspects of the GUI with the data from the user and the current
 		combobox_SelectRole.getSelectionModel().select(0);
 		
@@ -110,16 +114,12 @@ public class ViewMultipleRoleDispatch {
 
 	/**********
 	 * <p> Method: ViewMultipleRoleDispatch() </p>
-	 * 
-	 * <p> Description: This method initializes all the elements of the graphical user interface.
+	 * * <p> Description: This method initializes all the elements of the graphical user interface.
 	 * This method determines the location, size, font, color, and change and event handlers for
 	 * each GUI object. </p>
-	 * 
-	 * @param ps specifies the JavaFX Stage to be used for this GUI and it's methods
-	 * 
-	 * @param user specifies the User for this GUI and it's methods
-	 * 
-	 */
+	 * * @param ps specifies the JavaFX Stage to be used for this GUI and it's methods
+	 * * @param user specifies the User for this GUI and it's methods
+	 * */
 	private ViewMultipleRoleDispatch() {
 
 		// Create the Pane for the list of widgets and the Scene for the window
@@ -130,11 +130,10 @@ public class ViewMultipleRoleDispatch {
 		
 		// GUI Area 1
 		setupLabelUI(label_PageTitle, "Arial", 28, width, Pos.CENTER, 0, 5);
-
-		label_UserDetails.setText("User: " + theUser.getUserName() + "   Select which role");
-		setupLabelUI(label_UserDetails, "Arial", 20, width, Pos.CENTER, 0, 50);
-
-		label_UserDetails.setText("User: " + theUser.getUserName());
+		
+		// *** FIX ***: The two redundant and incorrectly placed setText calls for this label were removed from here.
+		// The text for this label is now correctly set in the displayMultipleRoleDispatch method
+		// to ensure it has access to the correct user object before displaying the scene.
 		setupLabelUI(label_UserDetails, "Arial", 20, width, Pos.BASELINE_LEFT, 20, 55);			
 
 		// GUI Area 2
@@ -204,8 +203,7 @@ public class ViewMultipleRoleDispatch {
 
 	/**********
 	 * Private local method to initialize the standard fields for a button
-	 * 
-	 * @param b		The Button object to be initialized
+	 * * @param b		The Button object to be initialized
 	 * @param ff	The font to be used
 	 * @param f		The size of the font to be used
 	 * @param w		The width of the Button
@@ -224,8 +222,7 @@ public class ViewMultipleRoleDispatch {
 
 	/**********
 	 * Private local method to initialize the standard fields for a ComboBox
-	 * 
-	 * @param c		The ComboBox object to be initialized
+	 * * @param c		The ComboBox object to be initialized
 	 * @param ff	The font to be used
 	 * @param f		The size of the font to be used
 	 * @param w		The width of the ComboBox
