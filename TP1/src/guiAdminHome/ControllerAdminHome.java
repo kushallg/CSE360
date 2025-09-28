@@ -3,7 +3,9 @@ package guiAdminHome;
 import database.Database;
 import emailAddressValidator.EmailAddressRecognizer;
 import javafx.scene.control.Label;
-
+import javafx.scene.control.TextInputDialog;
+import javafx.scene.control.Alert;
+import javafx.scene.control.Alert.AlertType;
 
 
 /*******
@@ -124,11 +126,49 @@ public class ControllerAdminHome {
 	 * this function has not yet been implemented. </p>
 	 */
 	protected static void setOnetimePassword () {
-		System.out.println("\n*** WARNING ***: One-Time Password Not Yet Implemented");
-		ViewAdminHome.alertNotImplemented.setTitle("*** WARNING ***");
-		ViewAdminHome.alertNotImplemented.setHeaderText("One-Time Password Issue");
-		ViewAdminHome.alertNotImplemented.setContentText("One-Time Password Not Yet Implemented");
-		ViewAdminHome.alertNotImplemented.showAndWait();
+		//System.out.println("\n*** WARNING ***: One-Time Password Not Yet Implemented");
+		//ViewAdminHome.alertNotImplemented.setTitle("*** WARNING ***");
+		//ViewAdminHome.alertNotImplemented.setHeaderText("One-Time Password Issue");
+		//ViewAdminHome.alertNotImplemented.setContentText("One-Time Password Not Yet Implemented");
+		//ViewAdminHome.alertNotImplemented.showAndWait();
+		TextInputDialog askUsername = new TextInputDialog();
+		askUsername.setTitle("Set One-Time Password");
+		askUsername.setHeaderText("Allow user's to reset their password with a one-time password");
+		askUsername.setContentText("Enter username: ");
+		java.util.Optional<String> u = askUsername.showAndWait();
+		if (!u.isPresent()) {
+			return;
+		}
+		String username = u.get();
+		if (username.length() == 0) {
+			return;
+		}
+		
+		//check if Username exists in the first place
+		if(!theDatabase.doesUserExist(username)) {
+			Alert a = new Alert(AlertType.INFORMATION);
+			a.setTitle("*** ERROR ***");
+			a.setHeaderText("User not found");
+			a.setContentText("User \"" + username + "\" was not found.");
+			a.showAndWait();
+			return;
+		}
+		
+		String otp = theDatabase.generateOTPCode(username);
+		if (otp==null || otp.length() == 0) {
+			Alert a = new Alert(AlertType.INFORMATION);
+			a.setTitle("*** ERROR ***");
+			a.setHeaderText("Couldn't set one-time password");
+			a.setContentText("An unexpected error occurred setting the one-time password.");
+			a.showAndWait();
+		    return;
+		}
+		
+		String msg = "One-time password set for \"" + username + "\"\n\n" + "OTP: " + otp;
+		ViewAdminHome.alertEmailSent.setTitle("One-Time Password Set!");
+		ViewAdminHome.alertEmailSent.setHeaderText("Success");
+		ViewAdminHome.alertEmailSent.setContentText(msg);
+		ViewAdminHome.alertEmailSent.showAndWait();
 	}
 	
 	/**********

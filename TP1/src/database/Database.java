@@ -119,6 +119,11 @@ public class Database {
 	    		+ "emailAddress VARCHAR(255), "
 	            + "role VARCHAR(10))";
 	    statement.execute(invitationCodesTable);
+	    
+	    String otpsTable = "CREATE TABLE IF NOT EXISTS otpsTable ("
+	    		+ "username VARCHAR(255) PRIMARY KEY, "
+	    		+ "otp VARCHAR(10))";
+	    statement.execute(otpsTable);
 	}
 
 
@@ -548,6 +553,79 @@ public class Database {
 		    e.printStackTrace();
 		}
 	}
+	
+	/*******
+	 * <p> Method: String generateOTPCode(String username) </p>
+	 * 
+	 * <p> Description: Given a username, this method establishes a one-time password
+	 * code and adds a record to the OTPCodes table.  When the OTP code is used, the
+	 * stored username is used to establish the new password and the record is removed from the
+	 * table.</p>
+	 * 
+	 * @param username specifies the username whose password needs to be updated.
+	 * 
+	 * 
+	 * @return the code of six characters so the new user can use it to securely setup an account.
+	 * 
+	 */
+	// Generates a new otp code and inserts it into the database.
+	public String generateOTPCode(String username) {
+	    String otp = UUID.randomUUID().toString().substring(0, 6); // Generate a random 6-character code
+	    String query = "INSERT INTO otpsTable (username, otp) VALUES (?, ?)";
+
+	    try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+	        pstmt.setString(1, username);
+	        pstmt.setString(2, otp);
+	        pstmt.executeUpdate();
+	    } catch (SQLException e) {
+	        e.printStackTrace();
+	    }
+	    System.out.print("OTP: " + otp);
+	    return otp;
+	}
+	
+	
+	/*******
+	 * <p> Method: boolean otpHasBeenUsed(String username) </p>
+	 * 
+	 * <p> Description: Determine if the provided otp matched the one stored for the username.
+	 * If it does, deletes the one-time password so it can't be used, and returns true.
+	 * Otherwise, returns false. </p>
+	 * 
+	 * @param username is a string that identifies a user in the table
+	 * 
+	 * @param otp is the one-time password the user entered to update their password
+	 *  
+	 * @return true if the otp is in the table, else return false.
+	 * 
+	 */
+	// Check to see if an otp is already in the database
+	public boolean otpHasBeenUsed(String username, String otp) {
+	    String query = "SELECT otp FROM otpsTable WHERE username = ?";
+	    String remove = "DELETE FROM otpsTable WHERE username = ?";
+	    try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+	        pstmt.setString(1, username);
+	        ResultSet rs = pstmt.executeQuery();
+	        System.out.println(rs);
+	        if (rs.next()) {
+	        	//get the stored otp
+	        	String storedOtp = rs.getString("otp");
+	        	if (storedOtp != null && storedOtp.equals(otp)) {
+	                try (PreparedStatement del = connection.prepareStatement(remove)) {
+	                    del.setString(1, username);
+	                    //expire after use
+	                    del.executeUpdate();
+	                }
+	                return true;
+	            }
+	        }
+	    } catch (SQLException e) {
+	        e.printStackTrace();
+	    }
+		return false;
+	}
+	
+	
 	
 	/*******
 	 * <p> Method: String getFirstName(String username) </p>
