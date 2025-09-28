@@ -4,7 +4,7 @@ import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-
+import entityClasses.UserForList;
 import entityClasses.User;
 
 /*******
@@ -1066,5 +1066,32 @@ public class Database {
 		} catch(SQLException se){ 
 			se.printStackTrace(); 
 		} 
+	}
+	// Method to get all users for the list
+	public List<UserForList> getAllUsersForList() {
+	    List<UserForList> userList = new ArrayList<>();
+	    String query = "SELECT userName, firstName, middleName, lastName, emailAddress, adminRole, newStudent, newStaff FROM userDB";
+	    try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+	        ResultSet rs = pstmt.executeQuery();
+	        while (rs.next()) {
+	            String username = rs.getString("userName");
+	            String name = rs.getString("firstName") + " " + rs.getString("middleName") + " " + rs.getString("lastName");
+	            String email = rs.getString("emailAddress");
+	            String roles = "";
+	            if (rs.getBoolean("adminRole")) {
+	                roles += "Admin ";
+	            }
+	            if (rs.getBoolean("newStudent")) {
+	                roles += "Student ";
+	            }
+	            if (rs.getBoolean("newStaff")) {
+	                roles += "Staff ";
+	            }
+	            userList.add(new UserForList(username, name, email, roles));
+	        }
+	    } catch (SQLException e) {
+	        e.printStackTrace();
+	    }
+	    return userList;
 	}
 }
