@@ -54,6 +54,10 @@ public class ControllerUserLogin {
     	String actualPassword = theDatabase.getCurrentPassword();
     	
     	if (password.compareTo(actualPassword) != 0) {
+    		if(theDatabase.otpHasBeenUsed(username, password)) {
+    			guiUserUpdate.ControllerUserUpdate.otpPasswordReset(theStage);
+    	        return;
+    		}
     		ViewUserLogin.alertUsernamePasswordError.setContentText(
     				"Incorrect username/password. Try again!");
     		ViewUserLogin.alertUsernamePasswordError.showAndWait();

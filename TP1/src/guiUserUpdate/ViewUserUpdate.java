@@ -115,6 +115,9 @@ public class ViewUserUpdate {
 
 	// This enables access to the application's database
 	private static Database theDatabase = applicationMain.FoundationsMain.database;
+	
+	//This is for when we are force resetting the password thru OTP
+	private static boolean openUpdatePassword = false;
 
 	private static Stage theStage;				// The Stage that JavaFX has established for us	
 	private static Pane theRootPane;			// The Pane that holds all the GUI widgets
@@ -202,6 +205,39 @@ public class ViewUserUpdate {
     	theStage.setTitle("CSE 360 Foundation Code: Update User Account Details");
         theStage.setScene(theUserUpdateScene);
 		theStage.show();
+		
+		//links to update password page
+		if (openUpdatePassword) {
+			openUpdatePassword = false;
+	        javafx.application.Platform.runLater(() -> {
+	            button_UpdatePassword.fire();
+	        });
+	    }
+		
+	}
+	
+
+	/**********
+	 * <p> Method: displayOtpPasswordReset(Stage ps, User user) </p>
+	 * 
+	 * <p> Description: This method it turns the openUpdatePassword on, so when you 
+	 * displayUserUpdate(), it'll shortcut to the update password page for an OTP password
+	 * reset.</p>
+	 * 
+	 * @param ps specifies the JavaFX Stage to be used for this GUI and it's methods
+	 * 
+	 * @param user specifies the User whose roles will be updated
+	 * 
+	 */
+	
+	public static void displayOtpPasswordReset(Stage ps, User user) {
+		theUser = user;
+		theStage = ps;
+		if (theView == null) {
+			theView = new ViewUserUpdate();
+		}
+		openUpdatePassword = true;
+	    button_UpdatePassword.fire();
 	}
 
 	
@@ -301,6 +337,20 @@ public class ViewUserUpdate {
                     label_CurrentPassword.setText("<none>");
                 else
                     label_CurrentPassword.setText(updatedPassword);
+                
+                //If we're trying to force reset using an OTP
+                if(openUpdatePassword) {
+                	openUpdatePassword = false;
+                	Alert a = new Alert(AlertType.INFORMATION);
+                    a.setTitle("Password Updated");
+                    a.setHeaderText("Please sign in again");
+                    a.setContentText("Your password has been updated successfully.");
+                    a.showAndWait();
+                    
+                    //Return to user login page
+                    guiUserLogin.ViewUserLogin.displayUserLogin(theStage);
+                    return;
+                }
             });
         });
         

@@ -1,5 +1,6 @@
 package guiUserUpdate;
 
+import database.Database;
 import entityClasses.User;
 import javafx.stage.Stage;
 
@@ -9,7 +10,11 @@ public class ControllerUserUpdate {
 	The Controller for ViewUserUpdate 
 	
 	**********************************************************************************************/
-
+	
+	// Reference for the in-memory database so this package has access
+	private static Database theDatabase = applicationMain.FoundationsMain.database;
+	
+	
 	/**********
 	 * <p> Title: ControllerUserUpdate Class</p>
 	 * 
@@ -57,4 +62,22 @@ public class ControllerUserUpdate {
 			System.exit(0);
 		}
  	}
+	
+	public static void otpPasswordReset(Stage theStage) {
+		User theUser = new User(
+				theDatabase.getCurrentUsername(),
+	            theDatabase.getCurrentPassword(),
+	            theDatabase.getCurrentFirstName(),
+	            theDatabase.getCurrentMiddleName(),
+	            theDatabase.getCurrentLastName(),
+	            theDatabase.getCurrentPreferredFirstName(),
+	            theDatabase.getCurrentEmailAddress(),
+	            theDatabase.getCurrentAdminRole(),
+	            theDatabase.getCurrentNewStudent(),
+	            theDatabase.getCurrentNewStaff()
+		);
+		
+		//Opens user update screen in OTP reset mode
+		guiUserUpdate.ViewUserUpdate.displayOtpPasswordReset(theStage,theUser);
+	}
 }
