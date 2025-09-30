@@ -214,6 +214,32 @@ public class ControllerAddRemoveRoles {
 		ViewAddRemoveRoles.theRemoveRole = (String) ViewAddRemoveRoles.
 				combobox_SelectRoleToRemove.getValue();
 		
+		// ---- Guard: prevent an admin from removing their own Admin role ----
+	    try {
+	        // Actor = the logged-in user (your view already carries this)
+	        String actorUsername  = (ViewAddRemoveRoles.theUser != null)
+	                ? ViewAddRemoveRoles.theUser.getUserName()  
+	                : null;
+
+	        // Target = the user currently selected in the UI
+	        String targetUsername = ViewAddRemoveRoles.theSelectedUser;
+
+	        boolean removingAdminRole = "Admin".equalsIgnoreCase(ViewAddRemoveRoles.theRemoveRole);
+	        boolean selfAction = actorUsername != null
+	                && targetUsername != null
+	                && actorUsername.equalsIgnoreCase(targetUsername);
+
+	        if (selfAction && removingAdminRole) {
+	            // Show a friendly message and stop
+	
+	        	ViewAddRemoveRoles.label_CurrentRoles.setText("Admins cannot remove their own admin role.");
+	            return;
+	        }
+	    } catch (Exception ignored) {
+	        // If something is null, just fall through; DB call remains safe.
+	    }
+	    // -------------------------------------------------------------------
+		
 		// If the selection is the list header (e.g., "<Select a role>") don't do anything
 		if (ViewAddRemoveRoles.theRemoveRole.compareTo("<Select a role>") != 0) {
 			

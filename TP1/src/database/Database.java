@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.UUID;
 import entityClasses.UserForList;
 import entityClasses.User;
+import java.time.Instant; //added
 
 public class Database {
 
@@ -69,6 +70,23 @@ public class Database {
 				// multiple roles (e.g., "Admin, Student"), which can exceed 10 characters.
 	            + "role VARCHAR(255))";
 	    statement.execute(invitationCodesTable);
+	    
+	    // Add expiry and uses columns if they don't exist
+	    try { statement.execute("ALTER TABLE InvitationCodes ADD COLUMN expiresAt TIMESTAMP"); } catch (SQLException ignore) {}
+	    try { statement.execute("ALTER TABLE InvitationCodes ADD COLUMN usesRemaining INT DEFAULT 0"); } catch (SQLException ignore) {}
+
+	    //seed a one-time code that expires in 5 minutes — keep code <= 10 chars
+	    try (PreparedStatement ps = connection.prepareStatement(
+	        "MERGE INTO InvitationCodes (code, emailAddress, role, expiresAt, usesRemaining) KEY(code) VALUES (?,?,?,?,?)")) {
+	        ps.setString(1, "CSE360A1"); // <= 10 characters to fit VARCHAR(10)
+	        ps.setString(2, null);       // or a real email
+	        ps.setString(3, "MEMBER");   // or "Admin" for testing
+	        ps.setTimestamp(4, Timestamp.from(Instant.now().plusSeconds(1 * 60))); // +1 minute
+	        ps.setInt(5, 1);             // one-time use
+	        ps.executeUpdate();
+	    }
+	    
+	 // ---- END of the new block ----
 	    
 	    String otpsTable = "CREATE TABLE IF NOT EXISTS otpsTable ("
 	    		+ "username VARCHAR(255) PRIMARY KEY, "
@@ -223,15 +241,24 @@ public class Database {
 		return numberOfRoles;
 	}	
 
+	// Generates a one-time invitation that expires in 5 minutes.
 	public String generateInvitationCode(String emailAddress, String role) {
-	    String code = UUID.randomUUID().toString().substring(0, 6);
-	    String query = "INSERT INTO InvitationCodes (code, emailaddress, role) VALUES (?, ?, ?)";
+	    // 6-char UPPERCASE code (fits your VARCHAR(10) column)
+	    String code = java.util.UUID.randomUUID().toString()
+	                    .replace("-", "")
+	                    .substring(0, 6);
+	          
 
-	    try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+	    String sql = "INSERT INTO InvitationCodes (code, emailAddress, role, expiresAt, usesRemaining) " +
+	                 "VALUES (?, ?, ?, ?, ?)";
+	    try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
 	        pstmt.setString(1, code);
 	        pstmt.setString(2, emailAddress);
 	        pstmt.setString(3, role);
+	        pstmt.setTimestamp(4, Timestamp.from(Instant.now().plusSeconds(1 * 60))); // +1 minute
+	        pstmt.setInt(5, 1); // one-time
 	        pstmt.executeUpdate();
+	        System.out.println("[INVITE] Created code: " + code + " -> " + role);
 	    } catch (SQLException e) {
 	        e.printStackTrace();
 	    }
@@ -267,31 +294,27 @@ public class Database {
 	}
 	
 	public String getRoleGivenAnInvitationCode(String code) {
-	    String query = "SELECT * FROM InvitationCodes WHERE code = ?";
-	    try (PreparedStatement pstmt = connection.prepareStatement(query)) {
-	        pstmt.setString(1, code);
-	        ResultSet rs = pstmt.executeQuery();
-	        if (rs.next()) {
-	            return rs.getString("role");
+	    String sql = "SELECT role FROM InvitationCodes " +
+	                 "WHERE code = ? AND expiresAt > CURRENT_TIMESTAMP AND usesRemaining > 0";
+	    try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+	        pstmt.setString(1, code == null ? "" : code.trim());
+	        try (ResultSet rs = pstmt.executeQuery()) {
+	            if (rs.next()) return rs.getString("role");
 	        }
-	    } catch (SQLException e) {
-	        e.printStackTrace();
-	    }
+	    } catch (SQLException e) { e.printStackTrace(); }
 	    return "";
 	}
 
-	public String getEmailAddressUsingCode (String code ) {
-	    String query = "SELECT emailAddress FROM InvitationCodes WHERE code = ?";
-	    try (PreparedStatement pstmt = connection.prepareStatement(query)) {
-	        pstmt.setString(1, code);
-	        ResultSet rs = pstmt.executeQuery();
-	        if (rs.next()) {
-	            return rs.getString("emailAddress");
+	public String getEmailAddressUsingCode(String code) {
+	    String sql = "SELECT emailAddress FROM InvitationCodes " +
+	                 "WHERE code = ? AND expiresAt > CURRENT_TIMESTAMP AND usesRemaining > 0";
+	    try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+	        pstmt.setString(1, code == null ? "" : code.trim());
+	        try (ResultSet rs = pstmt.executeQuery()) {
+	            if (rs.next()) return rs.getString("emailAddress");
 	        }
-	    } catch (SQLException e) {
-	        e.printStackTrace();
-	    }
-		return "";
+	    } catch (SQLException e) { e.printStackTrace(); }
+	    return "";
 	}
 	
 	public void removeInvitationAfterUse(String code) {
