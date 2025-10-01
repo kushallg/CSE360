@@ -6,7 +6,7 @@ import javafx.scene.layout.Pane;
 import javafx.stage.Stage;
 
 /*******
- * <p> Title: EmailAddressTestbed Class. </p>
+ * <p> Title: PasswordEvaluationTestbed Class. </p>
  * 
  * <p> Description: A JavaFX demonstration application and baseline for a sequence of projects </p>
  * 

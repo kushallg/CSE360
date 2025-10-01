@@ -195,10 +195,10 @@ public class EmailAddressRecognizer {
 						(currentChar >= '0' && currentChar <= '9')) {	// Digit
 					nextState = 3;
 				}
-				else if (currentChar == '.') {
+				else if (currentChar == '.') {	//Period
 					nextState = 2;
 				}
-				else if (currentChar == '-') {
+				else if (currentChar == '-') {	//Hyphen
 					nextState = 4;
 				}
 				
@@ -256,21 +256,21 @@ public class EmailAddressRecognizer {
 		case 0:
 			// State 0 is not a final state, so we can return a very specific error message
 			emailAddressIndexofError = currentCharNdx;		// Copy the index of the current character;
-			emailAddressErrorMessage = "Incomplete Email Address\n";
+			emailAddressErrorMessage = "Incomplete or Invalid Email Address and/or Domain.\n";
 			return emailAddressErrorMessage;
 
 		case 1:
 			// State 1 is not a final state, so we can return a very specific error message
 			
 			emailAddressIndexofError = currentCharNdx;		// Copy the index of the current character;
-			emailAddressErrorMessage = "Email must only include alphanumeric, a period, or '@' characters.\n";
+			emailAddressErrorMessage = "Incomplete or Invalid Email Address and/or Domain.\n";
 			return emailAddressErrorMessage;
 
 		case 2:
 			// State 2 is not a final state, so we can return a very specific error message
 						
 			emailAddressIndexofError = currentCharNdx;		// Copy the index of the current character;
-			emailAddressErrorMessage = "Must enter valid email domain.\n";
+			emailAddressErrorMessage = "Incomplete or Invalid Email Address and/or Domain.\n";
 			return emailAddressErrorMessage;
 
 		case 3:

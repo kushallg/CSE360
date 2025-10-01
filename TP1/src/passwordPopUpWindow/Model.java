@@ -259,19 +259,19 @@ public class Model {
 		// Construct a String with a list of the requirement elements that were found.
 		String errMessage = "";
 		if (!foundUpperCase)
-			errMessage += "Upper case; ";
+			errMessage += "Need an upper case character; ";
 		
 		if (!foundLowerCase)
-			errMessage += "Lower case; ";
+			errMessage += "Need a lower case character; ";
 		
 		if (!foundNumericDigit)
-			errMessage += "Numeric digits; ";
+			errMessage += "Need a numeric digit; ";
 			
 		if (!foundSpecialChar)
-			errMessage += "Special character; ";
+			errMessage += "Need a special character; ";
 			
 		if (!foundLongEnough)
-			errMessage += "Long Enough; ";
+			errMessage += "Need at least 8 characters; ";
 		
 		if (errMessage == "")
 			return "";

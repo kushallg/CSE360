@@ -47,7 +47,7 @@ public class NameValidation {
 
 	/**********
 	 * This method is a mechanical transformation of a Finite State Machine diagram into a Java
-	 * method.
+	 * method for checking for a valid input for first, middle, or last names.
 	 * 
 	 * @param input		The input string for the Finite State Machine
 	 * @return			An output string that is empty if every things is okay or it is a String
@@ -125,9 +125,9 @@ public class NameValidation {
 					nameSize++;
 				}
 				// . -> State 2
-				else if ((currentChar == '-') ||
-							(currentChar == '\'') ||
-							(currentChar == ' ')) {							// Check for /
+				else if ((currentChar == '-') ||	// Check for hyphen
+							(currentChar == '\'') ||	// Check for apostrophe
+							(currentChar == ' ')) {		// Check for space
 					nextState = 2;
 					
 					// Count the .
@@ -148,7 +148,7 @@ public class NameValidation {
 				
 				// A-Z, a-z, 0-9 -> State 1
 				if ((currentChar >= 'A' && currentChar <= 'Z' ) ||		// Check for A-Z
-						(currentChar >= 'a' && currentChar <= 'z' )) {	// Check for 0-9
+						(currentChar >= 'a' && currentChar <= 'z' )) {	// Check for a-z
 					nextState = 1;
 					
 					// Count the odd digit
@@ -210,12 +210,12 @@ public class NameValidation {
 			// we must ensure the whole string has been consumed.
 
 			if (nameSize < 1) {
-				// UserName is too small
+				// Name is too small
 				nameValidatorErrorMessage += "A name must have at least 1 character.\n";
 				return nameValidatorErrorMessage;
 			}
 			else if (nameSize > 50) {
-				// UserName is too long
+				// Name is too long
 				nameValidatorErrorMessage += 
 					"A name must have no more than 50 characters.\n";
 				return nameValidatorErrorMessage;
@@ -227,7 +227,7 @@ public class NameValidation {
 				return nameValidatorErrorMessage;
 			}
 			else {
-					// UserName is valid
+					// Name is valid
 					nameValidatorIndexofError = -1;
 					nameValidatorErrorMessage = "";
 					return nameValidatorErrorMessage;
