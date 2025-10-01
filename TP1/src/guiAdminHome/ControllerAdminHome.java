@@ -9,6 +9,11 @@ import javafx.scene.control.Alert;
 import javafx.scene.control.Alert.AlertType;
 import java.util.List; 
 
+import java.util.ArrayList;
+import java.util.Optional;
+import javafx.scene.control.ButtonType;
+import javafx.scene.control.ChoiceDialog;
+
 
 /*******
  * <p> Title: GUIAdminHomePage Class. </p>
@@ -151,11 +156,62 @@ public class ControllerAdminHome {
 	}
 	
 	protected static void deleteUser() {
-		System.out.println("\n*** WARNING ***: Delete User Not Yet Implemented");
-		ViewAdminHome.alertNotImplemented.setTitle("*** WARNING ***");
-		ViewAdminHome.alertNotImplemented.setHeaderText("Delete User Issue");
-		ViewAdminHome.alertNotImplemented.setContentText("Delete User Not Yet Implemented");
-		ViewAdminHome.alertNotImplemented.showAndWait();
+	    // Step 1: Get all usernames from the database.
+	    List<String> users = new ArrayList<>(theDatabase.getUserList());
+	    users.remove("<Select a User>"); // Remove the placeholder text.
+
+	    // Check if there are any other users to delete.
+	    if (users.isEmpty()) {
+	        Alert noUsersAlert = new Alert(AlertType.INFORMATION);
+	        noUsersAlert.setTitle("Delete User");
+	        noUsersAlert.setHeaderText("No Other Users Found");
+	        noUsersAlert.setContentText("There are no other user accounts available to delete.");
+	        noUsersAlert.showAndWait();
+	        return;
+	    }
+
+	    // Step 2: Create a dialog to let the admin choose a user to delete.
+	    ChoiceDialog<String> dialog = new ChoiceDialog<>(users.get(0), users);
+	    dialog.setTitle("Delete User");
+	    dialog.setHeaderText("Select the user account to delete.");
+	    dialog.setContentText("User:");
+	    Optional<String> result = dialog.showAndWait();
+
+	    // Step 3: If the admin selected a user, proceed.
+	    if (result.isPresent()){
+	        String usernameToDelete = result.get();
+
+	        // IMPORTANT: Prevent an admin from deleting their own account.
+	        if (ViewAdminHome.theUser.getUserName().equals(usernameToDelete)) {
+	            Alert selfDeleteAlert = new Alert(AlertType.ERROR);
+	            selfDeleteAlert.setTitle("Action Not Allowed");
+	            selfDeleteAlert.setHeaderText("Admins cannot delete their own account.");
+	            selfDeleteAlert.showAndWait();
+	            return;
+	        }
+
+	        // Step 4: Show the "Are you sure?" confirmation dialog.
+	        Alert confirmAlert = new Alert(AlertType.CONFIRMATION);
+	        confirmAlert.setTitle("Confirm Deletion");
+	        confirmAlert.setHeaderText("Are you sure you want to delete this account?");
+	        confirmAlert.setContentText("User: " + usernameToDelete + "\nThis action cannot be undone.");
+	        Optional<ButtonType> confirmResult = confirmAlert.showAndWait();
+
+	        // Step 5: If the admin clicks "OK", perform the deletion.
+	        if (confirmResult.isPresent() && confirmResult.get() == ButtonType.OK) {
+	            theDatabase.deleteUser(usernameToDelete);
+
+	            // Show a final success message.
+	            Alert finalAlert = new Alert(AlertType.INFORMATION);
+	            finalAlert.setTitle("Success");
+	            finalAlert.setHeaderText("User Deleted");
+	            finalAlert.setContentText("The account for '" + usernameToDelete + "' has been deleted.");
+	            finalAlert.showAndWait();
+
+	            // Refresh the user count display on the main admin screen.
+	            ViewAdminHome.label_NumberOfUsers.setText("Number of users: " + theDatabase.getNumberOfUsers());
+	        }
+	    }
 	}
 	
 	protected static void listUsers() {

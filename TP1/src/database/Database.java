@@ -426,6 +426,7 @@ public class Database {
 	
 	
 	
+	
 	/*******
 	 * <p> Method: String getFirstName(String username) </p>
 	 * 
@@ -659,6 +660,21 @@ public class Database {
 	public boolean getCurrentNewStudent() { return currentNewStudent;};
 	public boolean getCurrentNewStaff() { return currentNewStaff;};
 	
+	/**********
+ 	* <p> Method: public void deleteUser(String username) </p>
+ 	* * <p> Description: This method removes a user's record from the database. </p>
+ 	* * @param username The username of the account to be deleted.
+ 	* */
+	public void deleteUser(String username) {
+    	String query = "DELETE FROM userDB WHERE userName = ?";
+    	try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+        	pstmt.setString(1, username);
+        	pstmt.executeUpdate();
+    	} catch (SQLException e) {
+        	e.printStackTrace();
+    	}
+	}	
+
 	public void dump() throws SQLException {
 		String query = "SELECT * FROM userDB";
 		ResultSet resultSet = statement.executeQuery(query);
