@@ -91,7 +91,7 @@ public class ControllerNewAccount {
                 System.exit(0);
             }
             
-            theDatabase.removeInvitationAfterUse(ViewNewAccount.text_Invitation.getText());
+            theDatabase.removeInvitationAfterUse(ViewNewAccount.theInvitationCode);
             
             // *** CHANGE ***: This section implements the redirect after account creation.
             // An Alert box is created to inform the user that their account was created successfully.

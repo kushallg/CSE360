@@ -9,6 +9,9 @@ import javafx.stage.Stage;
 //import nameValidation.NameValidation;
 import passwordPopUpWindow.Model;
 import userNameRecognizer.UserNameRecognizer;
+// Added imports for Alert dialogs to inform the user of the successful account creation.
+import javafx.scene.control.Alert;
+import javafx.scene.control.Alert.AlertType;
 
 public class ControllerFirstAdmin {
 	/*-********************************************************************************************
@@ -41,11 +44,9 @@ public class ControllerFirstAdmin {
 	
 	/**********
 	 * <p> Method: setAdminUsername() </p>
-	 * 
-	 * <p> Description: This method is called when the user adds text to the username field in the
+	 * * <p> Description: This method is called when the user adds text to the username field in the
 	 * View.  A private local copy of what was last entered is kept here.</p>
-	 * 
-	 */
+	 * */
 	protected static void setAdminUsername() {
 		adminUsername = ViewFirstAdmin.text_AdminUsername.getText();
 	}
@@ -53,11 +54,9 @@ public class ControllerFirstAdmin {
 	
 	/**********
 	 * <p> Method: setAdminPassword1() </p>
-	 * 
-	 * <p> Description: This method is called when the user adds text to the password 1 field in
+	 * * <p> Description: This method is called when the user adds text to the password 1 field in
 	 * the View.  A private local copy of what was last entered is kept here.</p>
-	 * 
-	 */
+	 * */
 	protected static void setAdminPassword1() {
 		adminPassword1 = ViewFirstAdmin.text_AdminPassword1.getText();
 		ViewFirstAdmin.label_PasswordsDoNotMatch.setText("");
@@ -66,17 +65,15 @@ public class ControllerFirstAdmin {
 	
 	/**********
 	 * <p> Method: setAdminPassword2() </p>
-	 * 
-	 * <p> Description: This method is called when the user adds text to the password 2 field in
+	 * * <p> Description: This method is called when the user adds text to the password 2 field in
 	 * the View.  A private local copy of what was last entered is kept here.</p>
-	 * 
-	 */
+	 * */
 	protected static void setAdminPassword2() {
 		adminPassword2 = ViewFirstAdmin.text_AdminPassword2.getText();		
 		ViewFirstAdmin.label_PasswordsDoNotMatch.setText("");
 	}
 
-	/** remove
+	/** removed this
 	protected static void setAdminFirstName() {
 		adminPassword2 = ViewFirstAdmin.text_AdminFirstName.getText();		
 		ViewFirstAdmin.label_PasswordsDoNotMatch.setText("");
@@ -100,12 +97,10 @@ public class ControllerFirstAdmin {
 	
 	/**********
 	 * <p> Method: doSetupAdmin() </p>
-	 * 
-	 * <p> Description: This method is called when the user presses the button to set up the Admin
+	 * * <p> Description: This method is called when the user presses the button to set up the Admin
 	 * account.  It start by trying to establish a new user and placing that user into the
 	 * database.  If that is successful, we proceed to the UserUpdate page.</p>
-	 * 
-	 */
+	 * */
 	protected static void doSetupAdmin(Stage ps, int r) {
 		
 		//use UserNameRecognizer validity method to detect and output username errors
@@ -140,7 +135,7 @@ public class ControllerFirstAdmin {
 			return;
 		}
 		
-		/** remove this
+		/** removed this
 		String firstNameErr = NameValidation.checkForValidName(adminFirstName);
 		if (!firstNameErr.isEmpty()) {
 			System.out.println("\n*** ERROR ***: " + firstNameErr);
@@ -206,8 +201,15 @@ public class ControllerFirstAdmin {
                 System.exit(0);
             }
             
-            // User was established in the database, so navigate to the User Update Page
-        	guiUserUpdate.ViewUserUpdate.displayUserUpdate(ViewFirstAdmin.theStage, user);
+            // This is the change. Instead of going to the User Update Page, a success message is
+            // displayed and then the user is directed to the User Login Page to log in.
+            Alert successAlert = new Alert(AlertType.INFORMATION);
+            successAlert.setTitle("Account Created");
+            successAlert.setHeaderText("Account created successfully!");
+            successAlert.setContentText("Please log in with your new credentials.");
+            successAlert.showAndWait();
+            
+            guiUserLogin.ViewUserLogin.displayUserLogin(ViewFirstAdmin.theStage);
 		}
 		else {
 			// The two passwords are NOT the same, so clear the passwords, explain the passwords
@@ -222,15 +224,12 @@ public class ControllerFirstAdmin {
 	
 	/**********
 	 * <p> Method: performQuit() </p>
-	 * 
-	 * <p> Description: This method terminates the execution of the program.  It leaves the
+	 * * <p> Description: This method terminates the execution of the program.  It leaves the
 	 * database in a state where the normal login page will be displayed when the application is
 	 * restarted.</p>
-	 * 
-	 */
+	 * */
 	protected static void performQuit() {
 		System.out.println("Perform Quit");
 		System.exit(0);
 	}	
 }
-
