@@ -69,32 +69,28 @@ public class Database {
                 + "newStaff BOOL DEFAULT FALSE)";
         statement.execute(userTable);
         
-        // This SQL statement defines the structure of the table that stores invitation codes.
+        // create Invitation Code table
         String invitationCodesTable = "CREATE TABLE IF NOT EXISTS InvitationCodes ("
                 + "code VARCHAR(10) PRIMARY KEY, "
                 + "emailAddress VARCHAR(255), "
-                // *** CHANGE ***: Increased the size of the 'role' column from VARCHAR(10) to VARCHAR(255).
-                // This is the critical fix to prevent the "Value too long" SQL error when saving
-                // multiple roles (e.g., "Admin, Student"), which can exceed 10 characters.
                 + "role VARCHAR(255))";
         statement.execute(invitationCodesTable);
         
-        // Add expiry and uses columns if they don't exist
+        // Added expiry and uses columns to the table
         try { statement.execute("ALTER TABLE InvitationCodes ADD COLUMN expiresAt TIMESTAMP"); } catch (SQLException ignore) {}
         try { statement.execute("ALTER TABLE InvitationCodes ADD COLUMN usesRemaining INT DEFAULT 0"); } catch (SQLException ignore) {}
 
-        //seed a one-time code that expires in 5 minutes — keep code <= 10 chars
+        //one-time code that lasts a minute
         try (PreparedStatement ps = connection.prepareStatement(
             "MERGE INTO InvitationCodes (code, emailAddress, role, expiresAt, usesRemaining) KEY(code) VALUES (?,?,?,?,?)")) {
-            ps.setString(1, "CSE360A1"); // <= 10 characters to fit VARCHAR(10)
-            ps.setString(2, null);       // or a real email
-            ps.setString(3, "MEMBER");   // or "Admin" for testing
+            ps.setString(1, "CSE360A1"); 
+            ps.setString(2, null);       
+            ps.setString(3, "MEMBER");   
             ps.setTimestamp(4, Timestamp.from(Instant.now().plusSeconds(1 * 60))); // +1 minute
             ps.setInt(5, 1);             // one-time use
             ps.executeUpdate();
         }
         
-     // ---- END of the new block ----
         
         String otpsTable = "CREATE TABLE IF NOT EXISTS otpsTable ("
                 + "username VARCHAR(255) PRIMARY KEY, "
@@ -103,8 +99,8 @@ public class Database {
     }
 
     /**
-     * Checks if the main user table is empty.
-     * @return true if no users exist in the database, false otherwise.
+     * Checks if user table empty
+     * @return true if no users are in the database and false if there are
      */
     public boolean isDatabaseEmpty() {
         String query = "SELECT COUNT(*) AS count FROM userDB";
@@ -298,9 +294,8 @@ public class Database {
      * @param role The role(s) to be assigned upon registration.
      * @return The generated 6-character invitation code.
      */
-    // Generates a one-time invitation that expires in 5 minutes.
+    // Generates a one-time invitation that expires in 1 minutes.
     public String generateInvitationCode(String emailAddress, String role) {
-        // 6-char UPPERCASE code (fits your VARCHAR(10) column)
         String code = java.util.UUID.randomUUID().toString()
                         .replace("-", "")
                         .substring(0, 6);
