@@ -1,24 +1,27 @@
 package database;
 
 import java.sql.*;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import entityClasses.Post; // Import Post
+import entityClasses.Reply; // Import Reply
 import entityClasses.UserForList;
 import entityClasses.User;
-import java.time.Instant; //added
+import java.time.Instant;
 
 public class Database {
 
-    static final String JDBC_DRIVER = "org.h2.Driver";   
-    static final String DB_URL = "jdbc:h2:~/FoundationDatabase";  
+    static final String JDBC_DRIVER = "org.h2.Driver";
+    static final String DB_URL = "jdbc:h2:~/FoundationDatabase";
 
-    static final String USER = "sa"; 
-    static final String PASS = ""; 
+    static final String USER = "sa";
+    static final String PASS = "";
 
     private Connection connection = null;
     private Statement statement = null;
-    
+
     private String currentUsername;
     private String currentPassword;
     private String currentFirstName;
@@ -30,10 +33,10 @@ public class Database {
     private boolean currentNewStudent;
     private boolean currentNewStaff;
 
-    public Database () {
-        
+    public Database() {
+
     }
-    
+
     /**
      * Establishes a connection to the H2 database and initializes tables if they don't exist.
      * @throws SQLException if a database access error occurs.
@@ -42,16 +45,16 @@ public class Database {
         try {
             Class.forName(JDBC_DRIVER);
             connection = DriverManager.getConnection(DB_URL, USER, PASS);
-            statement = connection.createStatement(); 
+            statement = connection.createStatement();
 
             createTables();
         } catch (ClassNotFoundException e) {
             System.err.println("JDBC Driver not found: " + e.getMessage());
         }
     }
-    
+
     /**
-     * Creates the necessary tables (userDB, InvitationCodes, otpsTable) if they are not already present.
+     * Creates the necessary tables if they are not already present.
      * @throws SQLException if a database access error occurs.
      */
     private void createTables() throws SQLException {
@@ -68,38 +71,52 @@ public class Database {
                 + "newStudent BOOL DEFAULT FALSE, "
                 + "newStaff BOOL DEFAULT FALSE)";
         statement.execute(userTable);
-        
+
         // This SQL statement defines the structure of the table that stores invitation codes.
         String invitationCodesTable = "CREATE TABLE IF NOT EXISTS InvitationCodes ("
                 + "code VARCHAR(10) PRIMARY KEY, "
                 + "emailAddress VARCHAR(255), "
-                // *** CHANGE ***: Increased the size of the 'role' column from VARCHAR(10) to VARCHAR(255).
-                // This is the critical fix to prevent the "Value too long" SQL error when saving
-                // multiple roles (e.g., "Admin, Student"), which can exceed 10 characters.
+                // *** CHANGE ***: Increased the size of the 'role' column to VARCHAR(255).
                 + "role VARCHAR(255))";
         statement.execute(invitationCodesTable);
-        
+
         // Add expiry and uses columns if they don't exist
         try { statement.execute("ALTER TABLE InvitationCodes ADD COLUMN expiresAt TIMESTAMP"); } catch (SQLException ignore) {}
         try { statement.execute("ALTER TABLE InvitationCodes ADD COLUMN usesRemaining INT DEFAULT 0"); } catch (SQLException ignore) {}
 
-        //seed a one-time code that expires in 5 minutes — keep code <= 10 chars
+        //seed a one-time code that expires in 1 minute
         try (PreparedStatement ps = connection.prepareStatement(
             "MERGE INTO InvitationCodes (code, emailAddress, role, expiresAt, usesRemaining) KEY(code) VALUES (?,?,?,?,?)")) {
-            ps.setString(1, "CSE360A1"); // <= 10 characters to fit VARCHAR(10)
-            ps.setString(2, null);       // or a real email
-            ps.setString(3, "MEMBER");   // or "Admin" for testing
+            ps.setString(1, "CSE360A1");
+            ps.setString(2, null);
+            ps.setString(3, "MEMBER");
             ps.setTimestamp(4, Timestamp.from(Instant.now().plusSeconds(1 * 60))); // +1 minute
             ps.setInt(5, 1);             // one-time use
             ps.executeUpdate();
         }
-        
-     // ---- END of the new block ----
-        
+
         String otpsTable = "CREATE TABLE IF NOT EXISTS otpsTable ("
                 + "username VARCHAR(255) PRIMARY KEY, "
                 + "otp VARCHAR(10))";
         statement.execute(otpsTable);
+        
+        // --- NEW TABLES FOR HW2 ---
+        String postsTable = "CREATE TABLE IF NOT EXISTS postsDB ("
+                + "postID INT AUTO_INCREMENT PRIMARY KEY, "
+                + "authorUsername VARCHAR(255), "
+                + "title VARCHAR(255), "
+                + "content VARCHAR(4096), "
+                + "timestamp TIMESTAMP)";
+        statement.execute(postsTable);
+
+        String repliesTable = "CREATE TABLE IF NOT EXISTS repliesDB ("
+                + "replyID INT AUTO_INCREMENT PRIMARY KEY, "
+                + "postID INT, "
+                + "authorUsername VARCHAR(255), "
+                + "content VARCHAR(2048), "
+                + "timestamp TIMESTAMP)";
+        statement.execute(repliesTable);
+        // --- END OF NEW TABLES ---
     }
 
     /**
@@ -178,7 +195,6 @@ public class Database {
             
             pstmt.executeUpdate();
         }
-        
     }
     
     /**
@@ -298,14 +314,11 @@ public class Database {
      * @param role The role(s) to be assigned upon registration.
      * @return The generated 6-character invitation code.
      */
-    // Generates a one-time invitation that expires in 5 minutes.
     public String generateInvitationCode(String emailAddress, String role) {
-        // 6-char UPPERCASE code (fits your VARCHAR(10) column)
         String code = java.util.UUID.randomUUID().toString()
                         .replace("-", "")
                         .substring(0, 6);
               
-
         String sql = "INSERT INTO InvitationCodes (code, emailAddress, role, expiresAt, usesRemaining) " +
                      "VALUES (?, ?, ?, ?, ?)";
         try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
@@ -437,17 +450,11 @@ public class Database {
         }
     }
     
-
-    /*******
-     * <p> Method: String generateOTPCode(String username) </p>
-     * * <p> Description: Given a username, this method establishes a one-time password
-     * code and adds a record to the OTPCodes table.  When the OTP code is used, the
-     * stored username is used to establish the new password and the record is removed from the
-     * table.</p>
-     * * @param username specifies the username whose password needs to be updated.
-     * * * @return the code of six characters so the new user can use it to securely setup an account.
-     * */
-    // Generates a new otp code and inserts it into the database.
+    /**
+     * Generates a one-time password for a user.
+     * @param username The user for whom to generate the OTP.
+     * @return The generated OTP.
+     */
     public String generateOTPCode(String username) {
         String otp = UUID.randomUUID().toString().substring(0, 6); // Generate a random 6-character code
         String query = "INSERT INTO otpsTable (username, otp) VALUES (?, ?)";
@@ -463,17 +470,12 @@ public class Database {
         return otp;
     }
     
-    
-    /*******
-     * <p> Method: boolean otpHasBeenUsed(String username) </p>
-     * * <p> Description: Determine if the provided otp matched the one stored for the username.
-     * If it does, deletes the one-time password so it can't be used, and returns true.
-     * Otherwise, returns false. </p>
-     * * @param username is a string that identifies a user in the table
-     * * @param otp is the one-time password the user entered to update their password
-     * * @return true if the otp is in the table, else return false.
-     * */
-    // Check to see if an otp is already in the database
+    /**
+     * Checks if the provided OTP is valid for the given user and removes it after use.
+     * @param username The user's username.
+     * @param otp The one-time password to validate.
+     * @return true if the OTP is valid, false otherwise.
+     */
     public boolean otpHasBeenUsed(String username, String otp) {
         String query = "SELECT otp FROM otpsTable WHERE username = ?";
         String remove = "DELETE FROM otpsTable WHERE username = ?";
@@ -482,12 +484,10 @@ public class Database {
             ResultSet rs = pstmt.executeQuery();
             System.out.println(rs);
             if (rs.next()) {
-                //get the stored otp
                 String storedOtp = rs.getString("otp");
                 if (storedOtp != null && storedOtp.equals(otp)) {
                     try (PreparedStatement del = connection.prepareStatement(remove)) {
                         del.setString(1, username);
-                        //expire after use
                         del.executeUpdate();
                     }
                     return true;
@@ -499,16 +499,11 @@ public class Database {
         return false;
     }
     
-    
-    
-    
-    /*******
-     * <p> Method: String getFirstName(String username) </p>
-     * * <p> Description: Get the first name of a user given that user's username.</p>
-     * * @param username is the username of the user
-     * * @return the first name of a user given that user's username 
-     * */
-    // Get the First Name
+    /**
+     * Retrieves a user's first name.
+     * @param username The user's username.
+     * @return The user's first name.
+     */
     public String getFirstName(String username) {
         String query = "SELECT firstName FROM userDB WHERE userName = ?";
         try (PreparedStatement pstmt = connection.prepareStatement(query)) {
@@ -786,11 +781,10 @@ public class Database {
     public boolean getCurrentNewStudent() { return currentNewStudent;};
     public boolean getCurrentNewStaff() { return currentNewStaff;};
     
-    /**********
-    * <p> Method: public void deleteUser(String username) </p>
-    * * <p> Description: This method removes a user's record from the database. </p>
-    * * @param username The username of the account to be deleted.
-    * */
+    /**
+     * Deletes a user from the database.
+     * @param username The username of the account to be deleted.
+     */
     public void deleteUser(String username) {
         String query = "DELETE FROM userDB WHERE userName = ?";
         try (PreparedStatement pstmt = connection.prepareStatement(query)) {
@@ -840,7 +834,6 @@ public class Database {
      * Retrieves all users from the database and formats them for display in a list.
      * @return A List of UserForList objects, each containing formatted user information.
      */
-    // Method to get all users for the list
     public List<UserForList> getAllUsersForList() {
         List<UserForList> userList = new ArrayList<>();
         String query = "SELECT userName, firstName, middleName, lastName, emailAddress, adminRole, newStudent, newStaff FROM userDB";
@@ -866,5 +859,130 @@ public class Database {
             e.printStackTrace();
         }
         return userList;
+    }
+
+    // --- NEW DATABASE METHODS FOR POSTS (CRUD) ---
+
+    /**
+     * Creates a new post in the database.
+     * @param post The Post object to be created.
+     */
+    public void createPost(Post post) {
+        String sql = "INSERT INTO postsDB (authorUsername, title, content, timestamp) VALUES (?, ?, ?, ?)";
+        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+            pstmt.setString(1, post.getAuthorUsername());
+            pstmt.setString(2, post.getTitle());
+            pstmt.setString(3, post.getContent());
+            pstmt.setTimestamp(4, Timestamp.valueOf(post.getTimestamp()));
+            pstmt.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * Retrieves all posts from the database.
+     * @return A List of Post objects.
+     */
+    public List<Post> getAllPosts() {
+        List<Post> posts = new ArrayList<>();
+        String sql = "SELECT * FROM postsDB ORDER BY timestamp DESC";
+        try (Statement stmt = connection.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+            while (rs.next()) {
+                int postID = rs.getInt("postID");
+                String author = rs.getString("authorUsername");
+                String title = rs.getString("title");
+                String content = rs.getString("content");
+                Timestamp timestamp = rs.getTimestamp("timestamp");
+                Post post = new Post(postID, author, title, content);
+                posts.add(post);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return posts;
+    }
+
+    /**
+     * Updates an existing post in the database.
+     * @param post The Post object with updated information.
+     */
+    public void updatePost(Post post) {
+        String sql = "UPDATE postsDB SET title = ?, content = ? WHERE postID = ?";
+        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+            pstmt.setString(1, post.getTitle());
+            pstmt.setString(2, post.getContent());
+            pstmt.setInt(3, post.getPostID());
+            pstmt.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * Deletes a post and all of its associated replies from the database.
+     * @param postID The ID of the post to delete.
+     */
+    public void deletePost(int postID) {
+        String deleteRepliesSql = "DELETE FROM repliesDB WHERE postID = ?";
+        try (PreparedStatement pstmt = connection.prepareStatement(deleteRepliesSql)) {
+            pstmt.setInt(1, postID);
+            pstmt.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        String deletePostSql = "DELETE FROM postsDB WHERE postID = ?";
+        try (PreparedStatement pstmt = connection.prepareStatement(deletePostSql)) {
+            pstmt.setInt(1, postID);
+            pstmt.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    // --- NEW DATABASE METHODS FOR REPLIES (CRUD) ---
+
+    /**
+     * Creates a new reply in the database.
+     * @param reply The Reply object to be created.
+     */
+    public void createReply(Reply reply) {
+        String sql = "INSERT INTO repliesDB (postID, authorUsername, content, timestamp) VALUES (?, ?, ?, ?)";
+        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+            pstmt.setInt(1, reply.getPostID());
+            pstmt.setString(2, reply.getAuthorUsername());
+            pstmt.setString(3, reply.getContent());
+            pstmt.setTimestamp(4, Timestamp.valueOf(reply.getTimestamp()));
+            pstmt.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * Retrieves all replies for a specific post.
+     * @param postID The ID of the post whose replies are to be fetched.
+     * @return A List of Reply objects.
+     */
+    public List<Reply> getRepliesForPost(int postID) {
+        List<Reply> replies = new ArrayList<>();
+        String sql = "SELECT * FROM repliesDB WHERE postID = ? ORDER BY timestamp ASC";
+        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+            pstmt.setInt(1, postID);
+            ResultSet rs = pstmt.executeQuery();
+            while (rs.next()) {
+                int replyID = rs.getInt("replyID");
+                String author = rs.getString("authorUsername");
+                String content = rs.getString("content");
+                Timestamp timestamp = rs.getTimestamp("timestamp");
+                Reply reply = new Reply(replyID, postID, author, content);
+                replies.add(reply);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return replies;
     }
 }
