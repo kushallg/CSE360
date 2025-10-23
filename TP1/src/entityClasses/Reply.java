@@ -1,3 +1,4 @@
+// BOLD CHANGE:
 package entityClasses;
 
 import java.time.LocalDateTime;
@@ -12,7 +13,7 @@ import java.time.LocalDateTime;
  *
  * @author Kushal Gadamsetty
  *
- * @version 1.00	2025-10-18 Initial version
+ * @version 1.01	2025-10-20 Added viewed attribute
  */
 public class Reply {
 
@@ -20,6 +21,7 @@ public class Reply {
     private int postID;
     private String authorUsername;
     private String content;
+    private boolean viewed; // Added viewed attribute
     private LocalDateTime timestamp;
 
     /**
@@ -43,8 +45,10 @@ public class Reply {
     public int getPostID() { return postID; }
     public String getAuthorUsername() { return authorUsername; }
     public String getContent() { return content; }
+    public boolean isViewed() { return viewed; } // Added getter for viewed
     public LocalDateTime getTimestamp() { return timestamp; }
 
     // Setter
     public void setContent(String content) { this.content = content; }
+    public void setViewed(boolean viewed) { this.viewed = viewed; } // Added setter for viewed
 }

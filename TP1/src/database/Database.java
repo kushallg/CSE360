@@ -1,7 +1,7 @@
+// BOLD CHANGE:
 package database;
 
 import java.sql.*;
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -76,7 +76,6 @@ public class Database {
         String invitationCodesTable = "CREATE TABLE IF NOT EXISTS InvitationCodes ("
                 + "code VARCHAR(10) PRIMARY KEY, "
                 + "emailAddress VARCHAR(255), "
-                // *** CHANGE ***: Increased the size of the 'role' column to VARCHAR(255).
                 + "role VARCHAR(255))";
         statement.execute(invitationCodesTable);
 
@@ -106,6 +105,8 @@ public class Database {
                 + "authorUsername VARCHAR(255), "
                 + "title VARCHAR(255), "
                 + "content VARCHAR(4096), "
+                + "thread VARCHAR(255) DEFAULT 'General', " 
+                + "deleted BOOLEAN DEFAULT FALSE, " 
                 + "timestamp TIMESTAMP)";
         statement.execute(postsTable);
 
@@ -116,6 +117,18 @@ public class Database {
                 + "content VARCHAR(2048), "
                 + "timestamp TIMESTAMP)";
         statement.execute(repliesTable);
+
+        String viewedPostsTable = "CREATE TABLE IF NOT EXISTS viewed_posts ("
+                + "postID INT, "
+                + "username VARCHAR(255), "
+                + "PRIMARY KEY (postID, username))";
+        statement.execute(viewedPostsTable);
+
+        String viewedRepliesTable = "CREATE TABLE IF NOT EXISTS viewed_replies ("
+                + "replyID INT, "
+                + "username VARCHAR(255), "
+                + "PRIMARY KEY (replyID, username))";
+        statement.execute(viewedRepliesTable);
         // --- END OF NEW TABLES ---
     }
 
@@ -868,12 +881,13 @@ public class Database {
      * @param post The Post object to be created.
      */
     public void createPost(Post post) {
-        String sql = "INSERT INTO postsDB (authorUsername, title, content, timestamp) VALUES (?, ?, ?, ?)";
+        String sql = "INSERT INTO postsDB (authorUsername, title, content, thread, timestamp) VALUES (?, ?, ?, ?, ?)";
         try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
             pstmt.setString(1, post.getAuthorUsername());
             pstmt.setString(2, post.getTitle());
             pstmt.setString(3, post.getContent());
-            pstmt.setTimestamp(4, Timestamp.valueOf(post.getTimestamp()));
+            pstmt.setString(4, post.getThread());
+            pstmt.setTimestamp(5, Timestamp.from(Instant.now()));
             pstmt.executeUpdate();
         } catch (SQLException e) {
             e.printStackTrace();
@@ -881,21 +895,86 @@ public class Database {
     }
 
     /**
-     * Retrieves all posts from the database.
+     * Retrieves all posts from the database that have not been "soft deleted".
+     * @param username The username of the current user, to determine read status.
      * @return A List of Post objects.
      */
-    public List<Post> getAllPosts() {
+    public List<Post> getAllPosts(String username) {
         List<Post> posts = new ArrayList<>();
-        String sql = "SELECT * FROM postsDB ORDER BY timestamp DESC";
-        try (Statement stmt = connection.createStatement();
-             ResultSet rs = stmt.executeQuery(sql)) {
+        String sql = "SELECT p.*, " +
+                     "v.postID IS NOT NULL AS viewed, " +
+                     "(SELECT COUNT(*) FROM repliesDB r WHERE r.postID = p.postID) AS replyCount, " +
+                     "(SELECT COUNT(*) FROM repliesDB r LEFT JOIN viewed_replies vr ON r.replyID = vr.replyID AND vr.username = ? WHERE r.postID = p.postID AND vr.replyID IS NULL) AS unreadReplyCount " +
+                     "FROM postsDB p " +
+                     "LEFT JOIN viewed_posts v ON p.postID = v.postID AND v.username = ? " +
+                     "WHERE p.deleted = FALSE ORDER BY p.timestamp DESC";
+        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+            pstmt.setString(1, username);
+            pstmt.setString(2, username);
+            ResultSet rs = pstmt.executeQuery();
             while (rs.next()) {
                 int postID = rs.getInt("postID");
                 String author = rs.getString("authorUsername");
                 String title = rs.getString("title");
                 String content = rs.getString("content");
-                Timestamp timestamp = rs.getTimestamp("timestamp");
-                Post post = new Post(postID, author, title, content);
+                String thread = rs.getString("thread");
+                boolean deleted = rs.getBoolean("deleted");
+                boolean viewed = rs.getBoolean("viewed");
+                int replyCount = rs.getInt("replyCount");
+                int unreadReplyCount = rs.getInt("unreadReplyCount");
+                Post post = new Post(postID, author, title, content, thread, deleted, viewed, replyCount, unreadReplyCount);
+                posts.add(post);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return posts;
+    }
+
+    /**
+     * Searches for posts based on a keyword and an optional thread, excluding "soft deleted" posts.
+     * @param keyword The keyword to search for in post titles and content.
+     * @param thread The thread to filter by. If "All Threads", no thread filter is applied.
+     * @param username The username of the current user, to determine read status.
+     * @return A List of matching Post objects.
+     */
+    public List<Post> searchPosts(String keyword, String thread, String username) {
+        List<Post> posts = new ArrayList<>();
+        String sql = "SELECT p.*, " +
+                     "v.postID IS NOT NULL AS viewed, " +
+                     "(SELECT COUNT(*) FROM repliesDB r WHERE r.postID = p.postID) AS replyCount, " +
+                     "(SELECT COUNT(*) FROM repliesDB r LEFT JOIN viewed_replies vr ON r.replyID = vr.replyID AND vr.username = ? WHERE r.postID = p.postID AND vr.replyID IS NULL) AS unreadReplyCount " +
+                     "FROM postsDB p " +
+                     "LEFT JOIN viewed_posts v ON p.postID = v.postID AND v.username = ? " +
+                     "WHERE p.deleted = FALSE AND (LOWER(p.title) LIKE LOWER(?) OR LOWER(p.content) LIKE LOWER(?))";
+        if (!"All Threads".equals(thread)) {
+            sql += " AND p.thread = ?";
+        }
+        sql += " ORDER BY p.timestamp DESC";
+
+        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+            String searchKeyword = "%" + keyword + "%";
+            int paramIndex = 1;
+            pstmt.setString(paramIndex++, username);
+            pstmt.setString(paramIndex++, username);
+            pstmt.setString(paramIndex++, searchKeyword);
+            pstmt.setString(paramIndex++, searchKeyword);
+            if (!"All Threads".equals(thread)) {
+                pstmt.setString(paramIndex++, thread);
+            }
+
+            ResultSet rs = pstmt.executeQuery();
+            while (rs.next()) {
+                int postID = rs.getInt("postID");
+                String author = rs.getString("authorUsername");
+                String title = rs.getString("title");
+                String content = rs.getString("content");
+                String postThread = rs.getString("thread");
+                boolean deleted = rs.getBoolean("deleted");
+                boolean viewed = rs.getBoolean("viewed");
+                int replyCount = rs.getInt("replyCount");
+                int unreadReplyCount = rs.getInt("unreadReplyCount");
+                Post post = new Post(postID, author, title, content, postThread, deleted, viewed, replyCount, unreadReplyCount);
                 posts.add(post);
             }
         } catch (SQLException e) {
@@ -921,21 +1000,29 @@ public class Database {
     }
 
     /**
-     * Deletes a post and all of its associated replies from the database.
+     * "Soft deletes" a post by setting its `deleted` flag to TRUE.
      * @param postID The ID of the post to delete.
      */
     public void deletePost(int postID) {
-        String deleteRepliesSql = "DELETE FROM repliesDB WHERE postID = ?";
-        try (PreparedStatement pstmt = connection.prepareStatement(deleteRepliesSql)) {
+        String deletePostSql = "UPDATE postsDB SET deleted = TRUE WHERE postID = ?";
+        try (PreparedStatement pstmt = connection.prepareStatement(deletePostSql)) {
             pstmt.setInt(1, postID);
             pstmt.executeUpdate();
         } catch (SQLException e) {
             e.printStackTrace();
         }
+    }
 
-        String deletePostSql = "DELETE FROM postsDB WHERE postID = ?";
-        try (PreparedStatement pstmt = connection.prepareStatement(deletePostSql)) {
+    /**
+     * Marks a post as read for a specific user.
+     * @param postID The ID of the post.
+     * @param username The username of the user.
+     */
+    public void markPostAsRead(int postID, String username) {
+        String sql = "MERGE INTO viewed_posts (postID, username) KEY(postID, username) VALUES (?, ?)";
+        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
             pstmt.setInt(1, postID);
+            pstmt.setString(2, username);
             pstmt.executeUpdate();
         } catch (SQLException e) {
             e.printStackTrace();
@@ -954,7 +1041,7 @@ public class Database {
             pstmt.setInt(1, reply.getPostID());
             pstmt.setString(2, reply.getAuthorUsername());
             pstmt.setString(3, reply.getContent());
-            pstmt.setTimestamp(4, Timestamp.valueOf(reply.getTimestamp()));
+            pstmt.setTimestamp(4, Timestamp.from(Instant.now()));
             pstmt.executeUpdate();
         } catch (SQLException e) {
             e.printStackTrace();
@@ -966,23 +1053,72 @@ public class Database {
      * @param postID The ID of the post whose replies are to be fetched.
      * @return A List of Reply objects.
      */
-    public List<Reply> getRepliesForPost(int postID) {
+    public List<Reply> getRepliesForPost(int postID, String username) {
         List<Reply> replies = new ArrayList<>();
-        String sql = "SELECT * FROM repliesDB WHERE postID = ? ORDER BY timestamp ASC";
+        String sql = "SELECT r.*, vr.replyID IS NOT NULL AS viewed FROM repliesDB r " +
+                     "LEFT JOIN viewed_replies vr ON r.replyID = vr.replyID AND vr.username = ? " +
+                     "WHERE r.postID = ? ORDER BY r.timestamp ASC";
         try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
-            pstmt.setInt(1, postID);
+            pstmt.setString(1, username);
+            pstmt.setInt(2, postID);
             ResultSet rs = pstmt.executeQuery();
             while (rs.next()) {
                 int replyID = rs.getInt("replyID");
                 String author = rs.getString("authorUsername");
                 String content = rs.getString("content");
-                Timestamp timestamp = rs.getTimestamp("timestamp");
+                boolean viewed = rs.getBoolean("viewed");
                 Reply reply = new Reply(replyID, postID, author, content);
+                reply.setViewed(viewed);
                 replies.add(reply);
             }
         } catch (SQLException e) {
             e.printStackTrace();
         }
         return replies;
+    }
+
+    /**
+     * Updates an existing reply in the database.
+     * @param reply The Reply object with updated information.
+     */
+    public void updateReply(Reply reply) {
+        String sql = "UPDATE repliesDB SET content = ? WHERE replyID = ?";
+        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+            pstmt.setString(1, reply.getContent());
+            pstmt.setInt(2, reply.getReplyID());
+            pstmt.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * Deletes a reply from the database.
+     * @param replyID The ID of the reply to delete.
+     */
+    public void deleteReply(int replyID) {
+        String sql = "DELETE FROM repliesDB WHERE replyID = ?";
+        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+            pstmt.setInt(1, replyID);
+            pstmt.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * Marks a reply as read for a specific user.
+     * @param replyID The ID of the reply.
+     * @param username The username of the user.
+     */
+    public void markReplyAsRead(int replyID, String username) {
+        String sql = "MERGE INTO viewed_replies (replyID, username) KEY(replyID, username) VALUES (?, ?)";
+        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+            pstmt.setInt(1, replyID);
+            pstmt.setString(2, username);
+            pstmt.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
     }
 }

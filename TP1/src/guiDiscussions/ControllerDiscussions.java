@@ -1,19 +1,22 @@
-// BOLD CHANGE
+// BOLD CHANGE:
 package guiDiscussions;
 
 import database.Database;
 import entityClasses.Post;
 import entityClasses.Reply;
 import guiStudent.ViewStudentHome;
+import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.scene.control.Alert;
 import javafx.scene.control.ButtonType;
+import javafx.scene.control.ChoiceDialog;
 import javafx.scene.control.DialogPane;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextInputDialog;
-import java.util.Optional;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 
@@ -27,7 +30,7 @@ import java.util.stream.Collectors;
  *
  * @author Kushal Gadamsetty
  *
- * @version 1.01	2025-10-18 Implemented CRUD logic
+ * @version 1.08	2025-10-20 Corrected UI refresh exception
  */
 public class ControllerDiscussions {
 
@@ -37,7 +40,7 @@ public class ControllerDiscussions {
      * Initializes the view by loading all posts from the database into the ListView.
      */
     protected static void initializeView() {
-        List<Post> posts = theDatabase.getAllPosts();
+        List<Post> posts = theDatabase.getAllPosts(ViewDiscussions.theUser.getUserName());
         ObservableList<Post> observablePosts = FXCollections.observableArrayList(posts);
         ViewDiscussions.listView_Posts.setItems(observablePosts);
 
@@ -49,7 +52,7 @@ public class ControllerDiscussions {
 
     /**
      * Handles the event when a post is selected from the list. It displays the post's
-     * content and loads its replies.
+     * content, loads its replies, and marks the post as read.
      * @param selectedPost The post that was selected by the user.
      */
     protected static void postSelected(Post selectedPost) {
@@ -59,18 +62,50 @@ public class ControllerDiscussions {
             return;
         }
 
+        theDatabase.markPostAsRead(selectedPost.getPostID(), ViewDiscussions.theUser.getUserName());
+        selectedPost.setViewed(true);
+        ViewDiscussions.listView_Posts.refresh();
+
+        if (selectedPost.isDeleted()) {
+            ViewDiscussions.textArea_PostContent.setText("This post has been deleted.");
+            ViewDiscussions.listView_Replies.getItems().clear();
+            return;
+        }
+
         // Display the post content
         String postDetails = "Title: " + selectedPost.getTitle() + "\n" +
-                             "Author: " + selectedPost.getAuthorUsername() + "\n\n" +
+                             "Author: " + selectedPost.getAuthorUsername() + "\n" +
+                             "Thread: " + selectedPost.getThread() + "\n\n" +
                              selectedPost.getContent();
         ViewDiscussions.textArea_PostContent.setText(postDetails);
 
         // Fetch and display replies
-        List<Reply> replies = theDatabase.getRepliesForPost(selectedPost.getPostID());
-        List<String> formattedReplies = replies.stream()
-                .map(reply -> reply.getAuthorUsername() + ": " + reply.getContent())
-                .collect(Collectors.toList());
-        ViewDiscussions.listView_Replies.setItems(FXCollections.observableArrayList(formattedReplies));
+        List<Reply> replies = theDatabase.getRepliesForPost(selectedPost.getPostID(), ViewDiscussions.theUser.getUserName());
+        ObservableList<Reply> observableReplies = FXCollections.observableArrayList(replies);
+        ViewDiscussions.listView_Replies.setItems(observableReplies);
+    }
+
+    /**
+     * Handles the event when a reply is selected from the list. It marks the reply as read.
+     * @param selectedReply The reply that was selected by the user.
+     */
+    protected static void replySelected(Reply selectedReply) {
+        if (selectedReply != null && !selectedReply.isViewed()) {
+            theDatabase.markReplyAsRead(selectedReply.getReplyID(), ViewDiscussions.theUser.getUserName());
+            selectedReply.setViewed(true);
+            ViewDiscussions.listView_Replies.refresh();
+            
+            // By using Platform.runLater, we schedule the post list update to happen
+            // after the current UI event is finished, preventing the crash.
+            Platform.runLater(() -> {
+                int selectedIndex = ViewDiscussions.listView_Posts.getSelectionModel().getSelectedIndex();
+                List<Post> posts = theDatabase.getAllPosts(ViewDiscussions.theUser.getUserName());
+                ViewDiscussions.listView_Posts.setItems(FXCollections.observableArrayList(posts));
+                if (selectedIndex != -1) {
+                    ViewDiscussions.listView_Posts.getSelectionModel().select(selectedIndex);
+                }
+            });
+        }
     }
 
     /**
@@ -85,6 +120,16 @@ public class ControllerDiscussions {
 
         if (titleResult.isPresent() && !titleResult.get().trim().isEmpty()) {
             String title = titleResult.get();
+
+            // Dialog for selecting a thread
+            List<String> threadChoices = Arrays.asList("General", "Homework", "Exams");
+            ChoiceDialog<String> threadDialog = new ChoiceDialog<>("General", threadChoices);
+            threadDialog.setTitle("Create New Post");
+            threadDialog.setHeaderText("Select a thread for your post.");
+            threadDialog.setContentText("Thread:");
+            Optional<String> threadResult = threadDialog.showAndWait();
+
+            String thread = threadResult.orElse("General");
 
             // Use a TextArea in a custom dialog for multi-line content input
             TextInputDialog contentDialog = new TextInputDialog();
@@ -101,7 +146,7 @@ public class ControllerDiscussions {
 
             if (contentResult.isPresent() && !textArea.getText().trim().isEmpty()) {
                 String content = textArea.getText();
-                Post newPost = new Post(0, ViewDiscussions.theUser.getUserName(), title, content);
+                Post newPost = new Post(0, ViewDiscussions.theUser.getUserName(), title, content, thread, false, false, 0, 0);
                 theDatabase.createPost(newPost);
                 initializeView(); // Refresh the view to show the new post
             } else {
@@ -210,6 +255,98 @@ public class ControllerDiscussions {
             postSelected(selectedPost); // Refresh the replies for the current post
         } else {
             showError("Reply content cannot be empty.");
+        }
+    }
+
+    /**
+     * Searches for posts based on the keyword and thread selected in the UI.
+     */
+    protected static void searchPosts() {
+        String keyword = ViewDiscussions.textField_Search.getText();
+        String thread = ViewDiscussions.comboBox_Threads.getValue();
+        List<Post> posts = theDatabase.searchPosts(keyword, thread, ViewDiscussions.theUser.getUserName());
+        ObservableList<Post> observablePosts = FXCollections.observableArrayList(posts);
+        ViewDiscussions.listView_Posts.setItems(observablePosts);
+    }
+
+    /**
+     * Filters the posts to show only those created by the current user.
+     */
+    protected static void viewMyPosts() {
+        List<Post> allPosts = theDatabase.getAllPosts(ViewDiscussions.theUser.getUserName());
+        List<Post> myPosts = allPosts.stream()
+                .filter(post -> post.getAuthorUsername().equals(ViewDiscussions.theUser.getUserName()))
+                .collect(Collectors.toList());
+        ObservableList<Post> observablePosts = FXCollections.observableArrayList(myPosts);
+        ViewDiscussions.listView_Posts.setItems(observablePosts);
+    }
+
+    /**
+     * Filters the posts to show only those that are unread.
+     */
+    protected static void viewUnreadPosts() {
+        List<Post> allPosts = theDatabase.getAllPosts(ViewDiscussions.theUser.getUserName());
+        List<Post> unreadPosts = allPosts.stream()
+                .filter(post -> !post.isViewed())
+                .collect(Collectors.toList());
+        ObservableList<Post> observablePosts = FXCollections.observableArrayList(unreadPosts);
+        ViewDiscussions.listView_Posts.setItems(observablePosts);
+    }
+
+    /**
+     * Allows the author of a reply to edit its content.
+     */
+    protected static void editReply() {
+        Reply selectedReply = ViewDiscussions.listView_Replies.getSelectionModel().getSelectedItem();
+        if (selectedReply == null) {
+            showError("Please select a reply to edit.");
+            return;
+        }
+
+        if (!selectedReply.getAuthorUsername().equals(ViewDiscussions.theUser.getUserName())) {
+            showError("You can only edit your own replies.");
+            return;
+        }
+
+        TextInputDialog dialog = new TextInputDialog(selectedReply.getContent());
+        dialog.setTitle("Edit Reply");
+        dialog.setHeaderText("Update the content of your reply.");
+        dialog.setContentText("Reply:");
+
+        Optional<String> result = dialog.showAndWait();
+        if (result.isPresent() && !result.get().trim().isEmpty()) {
+            selectedReply.setContent(result.get());
+            theDatabase.updateReply(selectedReply);
+            postSelected(ViewDiscussions.listView_Posts.getSelectionModel().getSelectedItem()); // Refresh the replies
+        } else {
+            showError("Reply content cannot be empty.");
+        }
+    }
+
+    /**
+     * Deletes a selected reply after user confirmation.
+     */
+    protected static void deleteReply() {
+        Reply selectedReply = ViewDiscussions.listView_Replies.getSelectionModel().getSelectedItem();
+        if (selectedReply == null) {
+            showError("Please select a reply to delete.");
+            return;
+        }
+
+        if (!selectedReply.getAuthorUsername().equals(ViewDiscussions.theUser.getUserName())) {
+            showError("You can only delete your own replies.");
+            return;
+        }
+
+        Alert confirmation = new Alert(Alert.AlertType.CONFIRMATION);
+        confirmation.setTitle("Confirm Deletion");
+        confirmation.setHeaderText("Are you sure you want to delete this reply?");
+        confirmation.setContentText("This action cannot be undone.");
+
+        Optional<ButtonType> result = confirmation.showAndWait();
+        if (result.isPresent() && result.get() == ButtonType.OK) {
+            theDatabase.deleteReply(selectedReply.getReplyID());
+            postSelected(ViewDiscussions.listView_Posts.getSelectionModel().getSelectedItem()); // Refresh the replies
         }
     }
 
