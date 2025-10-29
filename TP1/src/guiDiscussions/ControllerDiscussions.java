@@ -294,6 +294,27 @@ public class ControllerDiscussions {
     }
 
     /**
+     * NEW METHOD: Filters the replies for the currently selected post to show only unread replies.
+     * If no post is selected, an error message is displayed to the user.
+     */
+    protected static void viewUnreadReplies() {
+        Post selectedPost = ViewDiscussions.listView_Posts.getSelectionModel().getSelectedItem();
+        if (selectedPost == null) {
+            showError("Please select a post first to view its unread replies.");
+            return;
+        }
+        // Fetch all replies for the selected post
+        List<Reply> allReplies = theDatabase.getRepliesForPost(selectedPost.getPostID(), ViewDiscussions.theUser.getUserName());
+        // Filter to only include replies that have not been viewed by the current user
+        List<Reply> unreadReplies = allReplies.stream()
+                .filter(reply -> !reply.isViewed())
+                .collect(Collectors.toList());
+        // Update the replies ListView to display only the unread replies
+        ObservableList<Reply> observableReplies = FXCollections.observableArrayList(unreadReplies);
+        ViewDiscussions.listView_Replies.setItems(observableReplies);
+    }
+
+    /**
      * Allows the author of a reply to edit its content.
      */
     protected static void editReply() {
