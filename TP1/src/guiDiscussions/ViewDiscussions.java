@@ -52,6 +52,8 @@ public class ViewDiscussions {
     protected static Button button_Unread = new Button("Unread");
     protected static Button button_EditReply = new Button("Edit Reply");
     protected static Button button_DeleteReply = new Button("Delete Reply");
+    // NEW: Button to filter and display only unread replies for the selected post
+    protected static Button button_UnreadReplies = new Button("Unread Replies");
 
     // New UI components for threads and search
     protected static ComboBox<String> comboBox_Threads = new ComboBox<>();
@@ -109,6 +111,12 @@ public class ViewDiscussions {
         button_Unread.setLayoutY(50);
         button_Unread.setPrefWidth(80);
         button_Unread.setOnAction(event -> ControllerDiscussions.viewUnreadPosts());
+
+        // NEW: Setup the Unread Replies button and attach its event handler
+        button_UnreadReplies.setLayoutX(640);
+        button_UnreadReplies.setLayoutY(50);
+        button_UnreadReplies.setPrefWidth(110);
+        button_UnreadReplies.setOnAction(event -> ControllerDiscussions.viewUnreadReplies());
 
 
         // Posts List
@@ -196,8 +204,8 @@ public class ViewDiscussions {
         setupButtonUI(button_Return, "Dialog", 14, 150, Pos.CENTER, 620, 520);
         button_Return.setOnAction(event -> ControllerDiscussions.returnToHome());
 
-
-        theRootPane.getChildren().addAll(label_PageTitle, comboBox_Threads, textField_Search, button_Search, button_MyPosts, button_Unread,
+        // NEW: Add the Unread Replies button to the root pane so it's displayed on screen
+        theRootPane.getChildren().addAll(label_PageTitle, comboBox_Threads, textField_Search, button_Search, button_MyPosts, button_Unread, button_UnreadReplies,
                 listView_Posts, textArea_PostContent, listView_Replies,
                 button_CreatePost, button_EditPost, button_DeletePost, button_AddReply, button_EditReply, button_DeleteReply, button_Return);
     }
