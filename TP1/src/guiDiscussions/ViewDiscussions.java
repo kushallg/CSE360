@@ -19,6 +19,7 @@ import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
 import javafx.scene.text.Font;
 import javafx.stage.Stage;
+import javafx.geometry.Pos;
 
 /**
  * <p> Title: ViewDiscussions Class </p>
@@ -42,6 +43,7 @@ public class ViewDiscussions {
     protected static ListView<Post> listView_Posts = new ListView<>();
     protected static TextArea textArea_PostContent = new TextArea();
     protected static ListView<Reply> listView_Replies = new ListView<>();
+    
 
     protected static Button button_CreatePost = new Button("Create New Post");
     protected static Button button_EditPost = new Button("Edit Selected Post");
@@ -65,6 +67,8 @@ public class ViewDiscussions {
     protected static User theUser;
     private static Pane theRootPane;
     public static Scene theDiscussionsScene = null;
+    protected static Label label_PostSummary = new Label();
+    protected static Label label_ReplySummary = new Label();
 
     public static void displayDiscussions(Stage ps, User user) {
         theStage = ps;
@@ -91,6 +95,7 @@ public class ViewDiscussions {
         comboBox_Threads.setPrefWidth(150);
         comboBox_Threads.getItems().addAll("All Threads", "General", "Homework", "Exams");
         comboBox_Threads.getSelectionModel().selectFirst();
+        
 
         textField_Search.setLayoutX(180);
         textField_Search.setLayoutY(50);
@@ -124,8 +129,22 @@ public class ViewDiscussions {
         listView_Posts.setLayoutY(90);
         listView_Posts.setPrefSize(760, 200);
         listView_Posts.getSelectionModel().selectedItemProperty().addListener((obs, oldSelection, newSelection) -> {
-            ControllerDiscussions.postSelected(newSelection);
+        ControllerDiscussions.postSelected(newSelection);
+            
+        label_PostSummary.setLayoutX(540);
+        label_PostSummary.setLayoutY(270);
+        label_PostSummary.setFont(Font.font("Arial", 14));
+        label_PostSummary.setStyle("-fx-font-weight: bold;");
+
+            // Position the reply summary label (shows total and unread reply counts)
+        label_ReplySummary.setLayoutX(330);
+        label_ReplySummary.setLayoutY(270);
+        label_ReplySummary.setFont(Font.font("Arial", 14));
+        label_ReplySummary.setStyle("-fx-font-weight: bold;");
+        
+        
         });
+        
 
         // Custom ListCell for showing a blue dot for unread posts
         listView_Posts.setCellFactory(param -> new ListCell<Post>() {
@@ -206,8 +225,9 @@ public class ViewDiscussions {
 
         // NEW: Add the Unread Replies button to the root pane so it's displayed on screen
         theRootPane.getChildren().addAll(label_PageTitle, comboBox_Threads, textField_Search, button_Search, button_MyPosts, button_Unread, button_UnreadReplies,
-                listView_Posts, textArea_PostContent, listView_Replies,
+                listView_Posts, label_PostSummary, textArea_PostContent, listView_Replies, label_ReplySummary,
                 button_CreatePost, button_EditPost, button_DeletePost, button_AddReply, button_EditReply, button_DeleteReply, button_Return);
+    
     }
 
     private static void setupLabelUI(Label l, String ff, double f, double w, Pos p, double x, double y) {

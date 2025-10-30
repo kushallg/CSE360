@@ -48,6 +48,8 @@ public class ControllerDiscussions {
         ViewDiscussions.listView_Posts.getSelectionModel().clearSelection();
         ViewDiscussions.textArea_PostContent.clear();
         ViewDiscussions.listView_Replies.getItems().clear();
+        
+        updatePostSummary();
     }
 
     /**
@@ -83,6 +85,8 @@ public class ControllerDiscussions {
         List<Reply> replies = theDatabase.getRepliesForPost(selectedPost.getPostID(), ViewDiscussions.theUser.getUserName());
         ObservableList<Reply> observableReplies = FXCollections.observableArrayList(replies);
         ViewDiscussions.listView_Replies.setItems(observableReplies);
+        
+        updateReplySummary();
     }
 
     /**
@@ -104,8 +108,14 @@ public class ControllerDiscussions {
                 if (selectedIndex != -1) {
                     ViewDiscussions.listView_Posts.getSelectionModel().select(selectedIndex);
                 }
+                
+                updatePostSummary();
+                updateReplySummary();
             });
         }
+        
+        
+        
     }
 
     /**
@@ -148,7 +158,7 @@ public class ControllerDiscussions {
                 String content = textArea.getText();
                 Post newPost = new Post(0, ViewDiscussions.theUser.getUserName(), title, content, thread, false, false, 0, 0);
                 theDatabase.createPost(newPost);
-                initializeView(); // Refresh the view to show the new post
+                initializeView(); // This already calls updatePostSummary()
             } else {
                 showError("Post content cannot be empty.");
             }
@@ -197,7 +207,7 @@ public class ControllerDiscussions {
             if (contentResult.isPresent() && !textArea.getText().trim().isEmpty()) {
                 selectedPost.setContent(textArea.getText());
                 theDatabase.updatePost(selectedPost);
-                initializeView(); // Refresh view
+                initializeView(); // This already calls updatePostSummary()
             } else {
                 showError("Post content cannot be empty.");
             }
@@ -252,7 +262,7 @@ public class ControllerDiscussions {
             String content = result.get();
             Reply newReply = new Reply(0, selectedPost.getPostID(), ViewDiscussions.theUser.getUserName(), content);
             theDatabase.createReply(newReply);
-            postSelected(selectedPost); // Refresh the replies for the current post
+            postSelected(selectedPost); // This now calls updateReplySummary()
         } else {
             showError("Reply content cannot be empty.");
         }
@@ -279,6 +289,7 @@ public class ControllerDiscussions {
                 .collect(Collectors.toList());
         ObservableList<Post> observablePosts = FXCollections.observableArrayList(myPosts);
         ViewDiscussions.listView_Posts.setItems(observablePosts);
+        updatePostSummary();
     }
 
     /**
@@ -291,6 +302,8 @@ public class ControllerDiscussions {
                 .collect(Collectors.toList());
         ObservableList<Post> observablePosts = FXCollections.observableArrayList(unreadPosts);
         ViewDiscussions.listView_Posts.setItems(observablePosts);
+        
+        updatePostSummary();
     }
 
     /**
@@ -312,6 +325,8 @@ public class ControllerDiscussions {
         // Update the replies ListView to display only the unread replies
         ObservableList<Reply> observableReplies = FXCollections.observableArrayList(unreadReplies);
         ViewDiscussions.listView_Replies.setItems(observableReplies);
+        
+        updatePostSummary();
     }
 
     /**
@@ -338,7 +353,7 @@ public class ControllerDiscussions {
         if (result.isPresent() && !result.get().trim().isEmpty()) {
             selectedReply.setContent(result.get());
             theDatabase.updateReply(selectedReply);
-            postSelected(ViewDiscussions.listView_Posts.getSelectionModel().getSelectedItem()); // Refresh the replies
+            postSelected(ViewDiscussions.listView_Posts.getSelectionModel().getSelectedItem()); // This now calls updateReplySummary()
         } else {
             showError("Reply content cannot be empty.");
         }
@@ -367,7 +382,7 @@ public class ControllerDiscussions {
         Optional<ButtonType> result = confirmation.showAndWait();
         if (result.isPresent() && result.get() == ButtonType.OK) {
             theDatabase.deleteReply(selectedReply.getReplyID());
-            postSelected(ViewDiscussions.listView_Posts.getSelectionModel().getSelectedItem()); // Refresh the replies
+            postSelected(ViewDiscussions.listView_Posts.getSelectionModel().getSelectedItem()); // This now calls updateReplySummary()
         }
     }
 
@@ -388,5 +403,47 @@ public class ControllerDiscussions {
         alert.setHeaderText(null);
         alert.setContentText(message);
         alert.showAndWait();
+    }
+    
+    private static void updatePostSummary() {
+        List<Post> currentPosts = ViewDiscussions.listView_Posts.getItems();
+        if (currentPosts == null || currentPosts.isEmpty()) {
+            ViewDiscussions.label_PostSummary.setText("No posts to display");
+            return;
+        }
+        
+        long unreadCount = currentPosts.stream()
+                .filter(post -> !post.isViewed())
+                .count();
+        
+        ViewDiscussions.label_PostSummary.setText(
+            String.format("Showing %d posts (%d unread)", 
+                currentPosts.size(), unreadCount)
+        );
+    }
+    
+    
+    private static void updateReplySummary() {
+        Post selectedPost = ViewDiscussions.listView_Posts.getSelectionModel().getSelectedItem();
+        
+        if (selectedPost == null) {
+            ViewDiscussions.label_ReplySummary.setText("");
+            return;
+        }
+        
+        List<Reply> currentReplies = ViewDiscussions.listView_Replies.getItems();
+        if (currentReplies == null || currentReplies.isEmpty()) {
+            ViewDiscussions.label_ReplySummary.setText("No replies");
+            return;
+        }
+        
+        long unreadCount = currentReplies.stream()
+                .filter(reply -> !reply.isViewed())
+                .count();
+        
+        ViewDiscussions.label_ReplySummary.setText(
+            String.format("%d replies (%d unread)", 
+                currentReplies.size(), unreadCount)
+        );
     }
 }
