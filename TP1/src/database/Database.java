@@ -915,12 +915,12 @@ public class Database {
     public List<Post> getAllPosts(String username) {
         List<Post> posts = new ArrayList<>();
         String sql = "SELECT p.*, " +
-                     "v.postID IS NOT NULL AS viewed, " +
-                     "(SELECT COUNT(*) FROM repliesDB r WHERE r.postID = p.postID) AS replyCount, " +
-                     "(SELECT COUNT(*) FROM repliesDB r LEFT JOIN viewed_replies vr ON r.replyID = vr.replyID AND vr.username = ? WHERE r.postID = p.postID AND vr.replyID IS NULL) AS unreadReplyCount " +
-                     "FROM postsDB p " +
-                     "LEFT JOIN viewed_posts v ON p.postID = v.postID AND v.username = ? " +
-                     "WHERE p.deleted = FALSE ORDER BY p.timestamp DESC";
+                	 "v.postID IS NOT NULL AS viewed, " +
+                	 "(SELECT COUNT(*) FROM repliesDB r WHERE r.postID = p.postID) AS replyCount, " +
+                	 "(SELECT COUNT(*) FROM repliesDB r LEFT JOIN viewed_replies vr ON r.replyID = vr.replyID AND vr.username = ? WHERE r.postID = p.postID AND vr.replyID IS NULL) AS unreadReplyCount " +
+                	 "FROM postsDB p " +
+                	 "LEFT JOIN viewed_posts v ON p.postID = v.postID AND v.username = ? " +
+                	 "ORDER BY p.timestamp DESC";
         try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
             pstmt.setString(1, username);
             pstmt.setString(2, username);
@@ -954,12 +954,12 @@ public class Database {
     public List<Post> searchPosts(String keyword, String thread, String username) {
         List<Post> posts = new ArrayList<>();
         String sql = "SELECT p.*, " +
-                     "v.postID IS NOT NULL AS viewed, " +
-                     "(SELECT COUNT(*) FROM repliesDB r WHERE r.postID = p.postID) AS replyCount, " +
-                     "(SELECT COUNT(*) FROM repliesDB r LEFT JOIN viewed_replies vr ON r.replyID = vr.replyID AND vr.username = ? WHERE r.postID = p.postID AND vr.replyID IS NULL) AS unreadReplyCount " +
-                     "FROM postsDB p " +
-                     "LEFT JOIN viewed_posts v ON p.postID = v.postID AND v.username = ? " +
-                     "WHERE p.deleted = FALSE AND (LOWER(p.title) LIKE LOWER(?) OR LOWER(p.content) LIKE LOWER(?))";
+                	 "v.postID IS NOT NULL AS viewed, " +
+                	  "(SELECT COUNT(*) FROM repliesDB r WHERE r.postID = p.postID) AS replyCount, " +
+                	  "(SELECT COUNT(*) FROM repliesDB r LEFT JOIN viewed_replies vr ON r.replyID = vr.replyID AND vr.username = ? WHERE r.postID = p.postID AND vr.replyID IS NULL) AS unreadReplyCount " +
+                	  "FROM postsDB p " +
+                	  "LEFT JOIN viewed_posts v ON p.postID = v.postID AND v.username = ? " +
+                	  "WHERE (LOWER(p.title) LIKE LOWER(?) OR LOWER(p.content) LIKE LOWER(?))";
         if (!"All Threads".equals(thread)) {
             sql += " AND p.thread = ?";
         }
@@ -1017,7 +1017,7 @@ public class Database {
      * @param postID The ID of the post to delete.
      */
     public void deletePost(int postID) {
-        String deletePostSql = "UPDATE postsDB SET deleted = TRUE WHERE postID = ?";
+        String deletePostSql = "UPDATE postsDB SET title = 'deleted', content = 'deleted', deleted = TRUE WHERE postID = ?";
         try (PreparedStatement pstmt = connection.prepareStatement(deletePostSql)) {
             pstmt.setInt(1, postID);
             pstmt.executeUpdate();

@@ -71,8 +71,15 @@ public class ControllerDiscussions {
         ViewDiscussions.listView_Posts.refresh();
 
         if (selectedPost.isDeleted()) {
-            ViewDiscussions.textArea_PostContent.setText("This post has been deleted.");
-            ViewDiscussions.listView_Replies.getItems().clear();
+            ViewDiscussions.textArea_PostContent.setText("Title: deleted\nAuthor: " + 
+                selectedPost.getAuthorUsername() + "\nThread: " + selectedPost.getThread() + 
+                "\n\ndeleted");
+            // Don't clear replies - keep them displayed
+            List<Reply> replies = theDatabase.getRepliesForPost(selectedPost.getPostID(), ViewDiscussions.theUser.getUserName());
+            ObservableList<Reply> observableReplies = FXCollections.observableArrayList(replies);
+            ViewDiscussions.listView_Replies.setItems(observableReplies);
+            updateReplySummary();
+            updatePostSummary();
             return;
         }
 
