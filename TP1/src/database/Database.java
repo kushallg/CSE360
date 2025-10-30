@@ -880,7 +880,7 @@ public class Database {
      * Creates a new post in the database.
      * @param post The Post object to be created.
      */
-    public void createPost(Post post) {
+    public void create(Post post) {
         String sql = "INSERT INTO postsDB (authorUsername, title, content, thread, timestamp) VALUES (?, ?, ?, ?, ?)";
         try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
             pstmt.setString(1, post.getAuthorUsername());
@@ -888,6 +888,19 @@ public class Database {
             pstmt.setString(3, post.getContent());
             pstmt.setString(4, post.getThread());
             pstmt.setTimestamp(5, Timestamp.from(Instant.now()));
+            pstmt.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+    
+    public void create(Reply reply) {         // overload
+        String sql = "INSERT INTO repliesDB (postID, authorUsername, content, timestamp) VALUES (?, ?, ?, ?)";
+        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+            pstmt.setInt(1, reply.getPostID());
+            pstmt.setString(2, reply.getAuthorUsername());
+            pstmt.setString(3, reply.getContent());
+            pstmt.setTimestamp(4, Timestamp.from(Instant.now()));
             pstmt.executeUpdate();
         } catch (SQLException e) {
             e.printStackTrace();
@@ -987,7 +1000,7 @@ public class Database {
      * Updates an existing post in the database.
      * @param post The Post object with updated information.
      */
-    public void updatePost(Post post) {
+    public void update(Post post) {
         String sql = "UPDATE postsDB SET title = ?, content = ? WHERE postID = ?";
         try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
             pstmt.setString(1, post.getTitle());
@@ -1012,6 +1025,10 @@ public class Database {
             e.printStackTrace();
         }
     }
+    
+    public void delete(Post post) {           // overload
+        deletePost(post.getPostID());
+    }
 
     /**
      * Marks a post as read for a specific user.
@@ -1035,6 +1052,7 @@ public class Database {
      * Creates a new reply in the database.
      * @param reply The Reply object to be created.
      */
+    /*
     public void createReply(Reply reply) {
         String sql = "INSERT INTO repliesDB (postID, authorUsername, content, timestamp) VALUES (?, ?, ?, ?)";
         try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
@@ -1047,6 +1065,7 @@ public class Database {
             e.printStackTrace();
         }
     }
+    */
 
     /**
      * Retrieves all replies for a specific post.
@@ -1081,7 +1100,7 @@ public class Database {
      * Updates an existing reply in the database.
      * @param reply The Reply object with updated information.
      */
-    public void updateReply(Reply reply) {
+    public void update(Reply reply) {  //overload
         String sql = "UPDATE repliesDB SET content = ? WHERE replyID = ?";
         try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
             pstmt.setString(1, reply.getContent());
@@ -1104,6 +1123,10 @@ public class Database {
         } catch (SQLException e) {
             e.printStackTrace();
         }
+    }
+    
+    public void delete(Reply reply) {         // overload
+        deleteReply(reply.getReplyID());
     }
 
     /**

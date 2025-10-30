@@ -55,7 +55,7 @@ public class DiscussionsTestingAutomation {
         // --- TC-01 (Positive): Create a valid post ---
         printHeader("TC-01", "Create a valid post");
         Post testPost = new Post(0, userA, "Question about UML Diagrams", "Can someone explain sequence diagrams?", "Homework", false, false, 0, 0);
-        db.createPost(testPost);
+        db.create(testPost); //change
         List<Post> postsAfterCreate = db.getAllPosts(userA);
         boolean tc01_success = !postsAfterCreate.isEmpty() && postsAfterCreate.get(0).getTitle().equals("Question about UML Diagrams");
         printResult(tc01_success);
@@ -74,7 +74,7 @@ public class DiscussionsTestingAutomation {
         // --- TC-04 (Positive): Add a valid reply ---
         printHeader("TC-04", "Add a valid reply to a post");
         Reply testReply = new Reply(0, postId, userB, "I can help with that!");
-        db.createReply(testReply);
+        db.create(testReply); //change
         List<Reply> replies = db.getRepliesForPost(postId, userA);
         boolean tc04_success = !replies.isEmpty() && replies.get(0).getAuthorUsername().equals(userB);
         printResult(tc04_success);
@@ -84,7 +84,7 @@ public class DiscussionsTestingAutomation {
         printHeader("TC-06", "Edit a self-authored reply");
         Reply replyToUpdate = db.getRepliesForPost(postId, userB).get(0);
         replyToUpdate.setContent("Updated content for my reply.");
-        db.updateReply(replyToUpdate);
+        db.update(replyToUpdate); //change
         replies = db.getRepliesForPost(postId, userB);
         boolean tc06_success = replies.get(0).getContent().equals("Updated content for my reply.");
         printResult(tc06_success);
@@ -121,7 +121,7 @@ public class DiscussionsTestingAutomation {
 
         // --- TC-11 (Positive): Search for posts by keyword ---
         printHeader("TC-11", "Search for posts by keyword");
-        db.createPost(new Post(0, userB, "JavaFX Question", "My ListView is not updating.", "General", false, false, 0, 0));
+        db.create(new Post(0, userB, "JavaFX Question", "My ListView is not updating.", "General", false, false, 0, 0)); //change
         List<Post> searchResults = db.searchPosts("JavaFX", "All Threads", userA);
         boolean tc11_success = !searchResults.isEmpty() && searchResults.get(0).getTitle().contains("JavaFX");
         printResult(tc11_success);
@@ -129,7 +129,7 @@ public class DiscussionsTestingAutomation {
         // --- TC-13 & TC-15 (Positive): Mark items as read ---
         printHeader("TC-13/15", "Mark a post and reply as read");
         int newPostId = searchResults.get(0).getPostID();
-        db.createReply(new Reply(0, newPostId, userA, "A new reply."));
+        db.create(new Reply(0, newPostId, userA, "A new reply.")); //change
         // Check initial state (unread)
         Post postBeforeRead = db.getAllPosts(userB).get(0);
         boolean initialStateCorrect = !postBeforeRead.isViewed() && postBeforeRead.getUnreadReplyCount() == 1;

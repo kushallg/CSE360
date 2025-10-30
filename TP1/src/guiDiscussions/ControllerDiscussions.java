@@ -161,7 +161,7 @@ public class ControllerDiscussions {
             if (contentResult.isPresent() && !textArea.getText().trim().isEmpty()) {
                 String content = textArea.getText();
                 Post newPost = new Post(0, ViewDiscussions.theUser.getUserName(), title, content, thread, false, false, 0, 0);
-                theDatabase.createPost(newPost);
+                theDatabase.create(newPost); //change
                 initializeView(); // This already calls updatePostSummary()
             } else {
                 showError("Post content cannot be empty.");
@@ -210,7 +210,7 @@ public class ControllerDiscussions {
 
             if (contentResult.isPresent() && !textArea.getText().trim().isEmpty()) {
                 selectedPost.setContent(textArea.getText());
-                theDatabase.updatePost(selectedPost);
+                theDatabase.update(selectedPost); //change
                 initializeView(); // This already calls updatePostSummary()
             } else {
                 showError("Post content cannot be empty.");
@@ -241,7 +241,7 @@ public class ControllerDiscussions {
 
         Optional<ButtonType> result = confirmation.showAndWait();
         if (result.isPresent() && result.get() == ButtonType.OK) {
-            theDatabase.deletePost(selectedPost.getPostID());
+        	theDatabase.delete(selectedPost); //change
             initializeView(); // Refresh the view
         }
     }
@@ -265,7 +265,7 @@ public class ControllerDiscussions {
         if (result.isPresent() && !result.get().trim().isEmpty()) {
             String content = result.get();
             Reply newReply = new Reply(0, selectedPost.getPostID(), ViewDiscussions.theUser.getUserName(), content);
-            theDatabase.createReply(newReply);
+            theDatabase.create(newReply); //change
             postSelected(selectedPost); // This now calls updateReplySummary()
         } else {
             showError("Reply content cannot be empty.");
@@ -358,7 +358,7 @@ public class ControllerDiscussions {
         Optional<String> result = dialog.showAndWait();
         if (result.isPresent() && !result.get().trim().isEmpty()) {
             selectedReply.setContent(result.get());
-            theDatabase.updateReply(selectedReply);
+            theDatabase.update(selectedReply); //change
             postSelected(ViewDiscussions.listView_Posts.getSelectionModel().getSelectedItem()); // This now calls updateReplySummary()
         } else {
             showError("Reply content cannot be empty.");
@@ -389,7 +389,7 @@ public class ControllerDiscussions {
 
         Optional<ButtonType> result = confirmation.showAndWait();
         if (result.isPresent() && result.get() == ButtonType.OK) {
-            theDatabase.deleteReply(selectedReply.getReplyID());
+        	theDatabase.delete(selectedReply); //change
             postSelected(ViewDiscussions.listView_Posts.getSelectionModel().getSelectedItem()); // This now calls updateReplySummary()
         }
         updatePostSummary();

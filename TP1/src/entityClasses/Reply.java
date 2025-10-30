@@ -15,12 +15,12 @@ import java.time.LocalDateTime;
  *
  * @version 1.01	2025-10-20 Added viewed attribute
  */
-public class Reply {
+public class Reply extends Post{
 
     private int replyID;
-    private int postID;
-    private String authorUsername;
-    private String content;
+    //private int postID;
+    //private String authorUsername;
+    //private String content;
     private boolean viewed; // Added viewed attribute
     private LocalDateTime timestamp;
 
@@ -33,22 +33,25 @@ public class Reply {
      * @param content         The main body content of the reply.
      */
     public Reply(int replyID, int postID, String authorUsername, String content) {
+    	super(postID, authorUsername == null ? "" : authorUsername.trim(), "", content == null ? "" : content.trim(), "", false, false, 0,0);
         this.replyID = replyID;
-        this.postID = postID;
-        this.authorUsername = authorUsername;
-        this.content = content;
+        //this.postID = postID;
+        //this.authorUsername = authorUsername;
+        //this.content = content;
+        this.viewed = false; //added
         this.timestamp = LocalDateTime.now(); // Set the timestamp to the current time
     }
 
     // Getters
     public int getReplyID() { return replyID; }
-    public int getPostID() { return postID; }
-    public String getAuthorUsername() { return authorUsername; }
-    public String getContent() { return content; }
+    //public int getPostID() { return postID; }
+    //public String getAuthorUsername() { return authorUsername; }
+    //public String getContent() { return content; }
     public boolean isViewed() { return viewed; } // Added getter for viewed
     public LocalDateTime getTimestamp() { return timestamp; }
 
     // Setter
-    public void setContent(String content) { this.content = content; }
+    //public void setContent(String content) { this.content = content; }
+    public void setReplyID(int replyID) { this.replyID = replyID; }
     public void setViewed(boolean viewed) { this.viewed = viewed; } // Added setter for viewed
 }
