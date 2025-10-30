@@ -70,6 +70,10 @@ public class ViewDiscussions {
     protected static Label label_PostSummary = new Label();
     protected static Label label_ReplySummary = new Label();
 
+    /**
+     * Displays the discussions view for the given user by setting up the scene
+     * and initializing the interface if it hasn't been created yet.
+     */
     public static void displayDiscussions(Stage ps, User user) {
         theStage = ps;
         theUser = user;
@@ -86,6 +90,9 @@ public class ViewDiscussions {
         theStage.show();
     }
 
+    /**
+     * Builds and configures all UI elements for the discussions view.
+     */
     private static void setupUI() {
         setupLabelUI(label_PageTitle, "Arial", 28, width, Pos.CENTER, 0, 5);
 
@@ -146,6 +153,9 @@ public class ViewDiscussions {
         });
         
 
+        /**
+         * Adds a blue dot next to unread posts in the list view.
+         */
         // Custom ListCell for showing a blue dot for unread posts
         listView_Posts.setCellFactory(param -> new ListCell<Post>() {
             @Override
@@ -181,6 +191,9 @@ public class ViewDiscussions {
             ControllerDiscussions.replySelected(newSelection);
         });
 
+        /**
+         * Adds a blue dot next to unread replies in the list view.
+         */
         // Custom ListCell for showing a blue dot for unread replies
         listView_Replies.setCellFactory(param -> new ListCell<Reply>() {
             @Override

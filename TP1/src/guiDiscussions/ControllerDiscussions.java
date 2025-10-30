@@ -1,4 +1,4 @@
-// BOLD CHANGE:
+ // BOLD CHANGE:
 package guiDiscussions;
 
 import database.Database;
@@ -320,7 +320,7 @@ public class ControllerDiscussions {
     }
 
     /**
-     * NEW METHOD: Filters the replies for the currently selected post to show only unread replies.
+     * Filters the replies for the currently selected post to show only unread replies.
      * If no post is selected, an error message is displayed to the user.
      */
     protected static void viewUnreadReplies() {
@@ -422,6 +422,10 @@ public class ControllerDiscussions {
         alert.showAndWait();
     }
     
+    /**
+     * Updates the discussions view summary with the total and unread post counts,
+     * or shows a default message if no posts are available.
+     */
     private static void updatePostSummary() {
         List<Post> currentPosts = ViewDiscussions.listView_Posts.getItems();
         if (currentPosts == null || currentPosts.isEmpty()) {
@@ -440,6 +444,10 @@ public class ControllerDiscussions {
     }
     
     
+    /**
+     * Updates the reply summary label with the total and unread reply counts,
+     * or clears/displays a default message when no replies are available.
+     */
     private static void updateReplySummary() {
         Post selectedPost = ViewDiscussions.listView_Posts.getSelectionModel().getSelectedItem();
         
