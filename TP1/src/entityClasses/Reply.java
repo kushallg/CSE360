@@ -90,6 +90,7 @@ public class Reply extends Post{
      * @param replyID is a Integer that specifies the id of the post.
      * 
      */
+    // Sets the current value of the reply Id.
     public void setReplyID(int replyID) { this.replyID = replyID; }
     
     /*****
@@ -100,5 +101,6 @@ public class Reply extends Post{
      * @param viewed is a boolean that specifies if the post has been viewed.
      * 
      */
+ // Returns if the has been viewed.
     public void setViewed(boolean viewed) { this.viewed = viewed; } // Added setter for viewed
 }
