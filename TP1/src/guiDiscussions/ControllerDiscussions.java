@@ -49,7 +49,9 @@ public class ControllerDiscussions {
         ViewDiscussions.textArea_PostContent.clear();
         ViewDiscussions.listView_Replies.getItems().clear();
         
+        
         updatePostSummary();
+        updateReplySummary();
     }
 
     /**
@@ -87,6 +89,8 @@ public class ControllerDiscussions {
         ViewDiscussions.listView_Replies.setItems(observableReplies);
         
         updateReplySummary();
+        updatePostSummary();
+        
     }
 
     /**
@@ -277,6 +281,8 @@ public class ControllerDiscussions {
         List<Post> posts = theDatabase.searchPosts(keyword, thread, ViewDiscussions.theUser.getUserName());
         ObservableList<Post> observablePosts = FXCollections.observableArrayList(posts);
         ViewDiscussions.listView_Posts.setItems(observablePosts);
+        updatePostSummary();
+        updateReplySummary();
     }
 
     /**
@@ -357,6 +363,8 @@ public class ControllerDiscussions {
         } else {
             showError("Reply content cannot be empty.");
         }
+        updatePostSummary();
+        updateReplySummary();
     }
 
     /**
@@ -384,6 +392,8 @@ public class ControllerDiscussions {
             theDatabase.deleteReply(selectedReply.getReplyID());
             postSelected(ViewDiscussions.listView_Posts.getSelectionModel().getSelectedItem()); // This now calls updateReplySummary()
         }
+        updatePostSummary();
+        updateReplySummary();
     }
 
     /**
