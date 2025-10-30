@@ -17,18 +17,19 @@ import java.time.LocalDateTime;
  */
 public class Reply extends Post{
 
-    private int replyID;
+	//private attributes
+    private int replyID; //to identify the reply
     //private int postID;
     //private String authorUsername;
     //private String content;
-    private boolean viewed; // Added viewed attribute
-    private LocalDateTime timestamp;
+    private boolean viewed; // to know if the reply has been read to help with unread reply counts
+    private LocalDateTime timestamp; // to identify the time post was created
 
     
     /**
      * <p> Method: Reply(int replyID, int postID, String authorUsername, String content)</p>
      * 
-     * <p> Description: This constructor is used to initialize a new Reply object. </p>
+     * <p> Description: This constructor is used to create and initialize a new Reply object. </p>
      * 
      * @param replyID         The unique identifier for the reply.
      *
@@ -50,7 +51,7 @@ public class Reply extends Post{
     /*****
      * <p> Method: Integer getReplyID() </p>
      * 
-     * <p> Description: This getter returns the reply Id. </p>
+     * <p> Description: This getter returns the reply Id. It implements read in the CRUD functionalities.  </p>
      * 
      * @return an Integer of the reply Id.
      * 
@@ -61,17 +62,18 @@ public class Reply extends Post{
     /*****
      * <p> Method: boolean isViewed()) </p>
      * 
-     * <p> Description: This getter returns the reply's viewed attribute. </p>
+     * <p> Description: This getter returns the reply's viewed attribute. It implements read in the CRUD functionalities. </p>
      * 
      * @return a Boolean of the reply's viewed attribute.
      * 
      */
+    // Returns if the post has been viewed.
     public boolean isViewed() { return viewed; } // Added getter for viewed
     
     /*****
      * <p> Method: LocalDateTime getTimestamp()) </p>
      * 
-     * <p> Description: This getter returns the post's timestamp. </p>
+     * <p> Description: This getter returns the post's timestamp. It implements read in the CRUD functionalities. </p>
      * 
      * @return an LocalDateTime of the post's timestamp.
      * 
@@ -83,7 +85,7 @@ public class Reply extends Post{
     /*****
      * <p> Method: void setReplyID(int replyID) </p>
      * 
-     * <p> Description: This setter defines the Reply id. </p>
+     * <p> Description: This setter defines the Reply id. It implements update in the CRUD functionalities. </p>
      * 
      * @param replyID is a Integer that specifies the id of the post.
      * 
@@ -93,7 +95,7 @@ public class Reply extends Post{
     /*****
      * <p> Method: void setViewed(boolean viewed) </p>
      * 
-     * <p> Description: This setter defines the Post viewed attribute. </p>
+     * <p> Description: This setter defines the Post viewed attribute. It implements update in the CRUD functionalities. </p>
      * 
      * @param viewed is a boolean that specifies if the post has been viewed.
      * 
