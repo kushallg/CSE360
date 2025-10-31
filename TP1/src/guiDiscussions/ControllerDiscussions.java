@@ -34,12 +34,17 @@ import java.util.stream.Collectors;
  */
 public class ControllerDiscussions {
 
+	// variable for database
     private static Database theDatabase = applicationMain.FoundationsMain.database;
 
-    /**
-     * Initializes the view by loading all posts from the database into the ListView.
+    /*****
+     * <p> Method: void initializeView() </p>
+     * 
+     * <p> Description: Initializes the view by loading all posts from the database into the ListView.. </p>
+     * 
      */
     protected static void initializeView() {
+    	// loads all the posts
         List<Post> posts = theDatabase.getAllPosts(ViewDiscussions.theUser.getUserName());
         ObservableList<Post> observablePosts = FXCollections.observableArrayList(posts);
         ViewDiscussions.listView_Posts.setItems(observablePosts);
@@ -55,8 +60,11 @@ public class ControllerDiscussions {
     }
 
     /**
-     * Handles the event when a post is selected from the list. It displays the post's
-     * content, loads its replies, and marks the post as read.
+     * <p> Method: void postSelected(Post selectedPost) </p>
+     * 
+     * <p> Description:Handles the event when a post is selected from the list. It displays the post's
+     * content, loads its replies, and marks the post as read. </p>
+     * 
      * @param selectedPost The post that was selected by the user.
      */
     protected static void postSelected(Post selectedPost) {
@@ -101,7 +109,10 @@ public class ControllerDiscussions {
     }
 
     /**
-     * Handles the event when a reply is selected from the list. It marks the reply as read.
+     * <p> Method: void replySelected(Reply selectedReply) </p>
+     * 
+     * <p> Description: Handles the event when a reply is selected from the list. It marks the reply as read. </p>
+     * 
      * @param selectedReply The reply that was selected by the user.
      */
     protected static void replySelected(Reply selectedReply) {
@@ -130,7 +141,10 @@ public class ControllerDiscussions {
     }
 
     /**
-     * Guides the user through creating a new post and saves it to the database.
+     * <p> Method: void createPost() </p>
+     * 
+     * <p> Description: Guides the user through creating a new post and saves it to the database. </p>
+     * 
      */
     protected static void createPost() {
         TextInputDialog titleDialog = new TextInputDialog();
@@ -139,6 +153,7 @@ public class ControllerDiscussions {
         titleDialog.setContentText("Title:");
         Optional<String> titleResult = titleDialog.showAndWait();
 
+        //Conduct input validation to make sure title content is not empty
         if (titleResult.isPresent() && !titleResult.get().trim().isEmpty()) {
             String title = titleResult.get();
 
@@ -165,6 +180,7 @@ public class ControllerDiscussions {
 
             Optional<String> contentResult = contentDialog.showAndWait();
 
+            //Conduct input validation to make sure post content is not empty
             if (contentResult.isPresent() && !textArea.getText().trim().isEmpty()) {
                 String content = textArea.getText();
                 Post newPost = new Post(0, ViewDiscussions.theUser.getUserName(), title, content, thread, false, false, 0, 0);
@@ -179,7 +195,10 @@ public class ControllerDiscussions {
     }
 
     /**
-     * Allows the author of a post to edit its title and content.
+     * <p> Method:  void editPost() </p>
+     * 
+     * <p> Description: Allows the author of a post to edit its title and content. </p>
+     * 
      */
     protected static void editPost() {
         Post selectedPost = ViewDiscussions.listView_Posts.getSelectionModel().getSelectedItem();
@@ -187,7 +206,7 @@ public class ControllerDiscussions {
             showError("Please select a post to edit.");
             return;
         }
-
+        // Checks to see if user trying to update post is post author, otherwise throws error.
         if (!selectedPost.getAuthorUsername().equals(ViewDiscussions.theUser.getUserName())) {
             showError("You can only edit your own posts.");
             return;
@@ -200,6 +219,7 @@ public class ControllerDiscussions {
         titleDialog.setContentText("Title:");
         Optional<String> titleResult = titleDialog.showAndWait();
 
+      //Conduct input validation to make sure post title is not empty
         if (titleResult.isPresent() && !titleResult.get().trim().isEmpty()) {
             selectedPost.setTitle(titleResult.get());
 
@@ -215,6 +235,7 @@ public class ControllerDiscussions {
 
             Optional<String> contentResult = contentDialog.showAndWait();
 
+          //Conduct input validation to make sure post content is not empty
             if (contentResult.isPresent() && !textArea.getText().trim().isEmpty()) {
                 selectedPost.setContent(textArea.getText());
                 theDatabase.update(selectedPost); //change
@@ -227,7 +248,10 @@ public class ControllerDiscussions {
 
 
     /**
-     * Deletes a selected post after user confirmation.
+     * <p> Method: void deletePost() </p>
+     * 
+     * <p> Description: Deletes a selected post after user confirmation. </p>
+     * 
      */
     protected static void deletePost() {
         Post selectedPost = ViewDiscussions.listView_Posts.getSelectionModel().getSelectedItem();
@@ -235,7 +259,7 @@ public class ControllerDiscussions {
             showError("Please select a post to delete.");
             return;
         }
-
+        // Checks to see if user trying to delete post is post author, otherwise throws error.
         if (!selectedPost.getAuthorUsername().equals(ViewDiscussions.theUser.getUserName())) {
             showError("You can only delete your own posts.");
             return;
@@ -254,7 +278,10 @@ public class ControllerDiscussions {
     }
 
     /**
-     * Allows a user to add a reply to the selected post.
+     * <p> Method:  void addReply()</p>
+     * 
+     * <p> Description: Allows a user to add a reply to the selected post.</p>
+     * 
      */
     protected static void addReply() {
         Post selectedPost = ViewDiscussions.listView_Posts.getSelectionModel().getSelectedItem();
@@ -280,7 +307,10 @@ public class ControllerDiscussions {
     }
 
     /**
-     * Searches for posts based on the keyword and thread selected in the UI.
+     * <p> Method: void searchPosts() </p>
+     * 
+     * <p> Description: Searches for posts based on the keyword and thread selected in the UI.</p>
+     * 
      */
     protected static void searchPosts() {
         String keyword = ViewDiscussions.textField_Search.getText();
@@ -293,11 +323,16 @@ public class ControllerDiscussions {
     }
 
     /**
-     * Filters the posts to show only those created by the current user.
+     * <p> Method: void viewMyPosts() </p>
+     * 
+     * <p> Description: Filters the posts to show only those created by the current user.</p>
+     * 
      */
     protected static void viewMyPosts() {
+    	// Load all posts visible
         List<Post> allPosts = theDatabase.getAllPosts(ViewDiscussions.theUser.getUserName());
         List<Post> myPosts = allPosts.stream()
+        		//filter based on if the post's author username is the same as the current logged in user
                 .filter(post -> post.getAuthorUsername().equals(ViewDiscussions.theUser.getUserName()))
                 .collect(Collectors.toList());
         ObservableList<Post> observablePosts = FXCollections.observableArrayList(myPosts);
@@ -306,11 +341,16 @@ public class ControllerDiscussions {
     }
 
     /**
-     * Filters the posts to show only those that are unread.
+     * <p> Method: void viewUnreadPosts()</p>
+     * 
+     * <p> Description: Filters the posts to show only those that are unread.</p>
+     * 
      */
     protected static void viewUnreadPosts() {
+    	// Load all posts visible
         List<Post> allPosts = theDatabase.getAllPosts(ViewDiscussions.theUser.getUserName());
         List<Post> unreadPosts = allPosts.stream()
+        		//filter based on if the post has been read yet using the viewed attribute
                 .filter(post -> !post.isViewed())
                 .collect(Collectors.toList());
         ObservableList<Post> observablePosts = FXCollections.observableArrayList(unreadPosts);
@@ -320,8 +360,11 @@ public class ControllerDiscussions {
     }
 
     /**
-     * Filters the replies for the currently selected post to show only unread replies.
-     * If no post is selected, an error message is displayed to the user.
+     * <p> Method: void viewUnreadReplies() </p>
+     * 
+     * <p> Description: Filters the replies for the currently selected post to show only unread replies.
+     * If no post is selected, an error message is displayed to the user. </p>
+     * 
      */
     protected static void viewUnreadReplies() {
         Post selectedPost = ViewDiscussions.listView_Posts.getSelectionModel().getSelectedItem();
@@ -343,7 +386,10 @@ public class ControllerDiscussions {
     }
 
     /**
-     * Allows the author of a reply to edit its content.
+     * <p> Method: void editReply()</p>
+     * 
+     * <p> Description: Allows the author of a reply to edit its content. </p>
+     * 
      */
     protected static void editReply() {
         Reply selectedReply = ViewDiscussions.listView_Replies.getSelectionModel().getSelectedItem();
@@ -351,7 +397,7 @@ public class ControllerDiscussions {
             showError("Please select a reply to edit.");
             return;
         }
-
+     // Checks to see if user trying to update reply is reply author, otherwise throws error.
         if (!selectedReply.getAuthorUsername().equals(ViewDiscussions.theUser.getUserName())) {
             showError("You can only edit your own replies.");
             return;
@@ -375,7 +421,10 @@ public class ControllerDiscussions {
     }
 
     /**
-     * Deletes a selected reply after user confirmation.
+     * <p> Method: void deleteReply()</p>
+     * 
+     * <p> Description: Deletes a selected reply after user confirmation.</p>
+     * 
      */
     protected static void deleteReply() {
         Reply selectedReply = ViewDiscussions.listView_Replies.getSelectionModel().getSelectedItem();
@@ -384,6 +433,7 @@ public class ControllerDiscussions {
             return;
         }
 
+        // Checks to see if user trying to update reply is reply author, otherwise throws error.
         if (!selectedReply.getAuthorUsername().equals(ViewDiscussions.theUser.getUserName())) {
             showError("You can only delete your own replies.");
             return;
@@ -404,14 +454,20 @@ public class ControllerDiscussions {
     }
 
     /**
-     * Returns the user to their home page.
+     * <p> Method: void returnToHome()</p>
+     * 
+     * <p> Description: Returns the user to their home page. </p>
+     * 
      */
     protected static void returnToHome() {
         ViewStudentHome.displayStudentHome(ViewDiscussions.theStage, ViewDiscussions.theUser);
     }
 
     /**
-     * A helper method to quickly show an error alert.
+     * <p> Method: void showError(String message)</p>
+     * 
+     * <p> Description: A helper method to quickly show an error alert. </p>
+     * 
      * @param message The error message to display.
      */
     private static void showError(String message) {
@@ -423,8 +479,11 @@ public class ControllerDiscussions {
     }
     
     /**
-     * Updates the discussions view summary with the total and unread post counts,
-     * or shows a default message if no posts are available.
+     * <p> Method: void updatePostSummary() </p>
+     * 
+     * <p> Description: Updates the discussions view summary with the total and unread post counts,
+     * or shows a default message if no posts are available. </p>
+     * 
      */
     private static void updatePostSummary() {
         List<Post> currentPosts = ViewDiscussions.listView_Posts.getItems();
@@ -445,8 +504,11 @@ public class ControllerDiscussions {
     
     
     /**
-     * Updates the reply summary label with the total and unread reply counts,
-     * or clears/displays a default message when no replies are available.
+     * <p> Method: void updateReplySummary()</p>
+     * 
+     * <p> Description: Updates the reply summary label with the total and unread reply counts,
+     * or clears/displays a default message when no replies are available.</p>
+     * 
      */
     private static void updateReplySummary() {
         Post selectedPost = ViewDiscussions.listView_Posts.getSelectionModel().getSelectedItem();
