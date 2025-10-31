@@ -71,8 +71,15 @@ public class ViewDiscussions {
     protected static Label label_ReplySummary = new Label();
 
     /**
-     * Displays the discussions view for the given user by setting up the scene
-     * and initializing the interface if it hasn't been created yet.
+     * <p> Method: void displayDiscussions(Stage ps, User user) </p>
+     * 
+     * <p> Description: Displays the discussions view for the given user by setting up the scene
+     * and initializing the interface if it hasn't been created yet. </p>
+     * 
+     * @param ps is the stage
+     * 
+     * @param user is the user that is logged in
+     * 
      */
     public static void displayDiscussions(Stage ps, User user) {
         theStage = ps;
@@ -91,7 +98,10 @@ public class ViewDiscussions {
     }
 
     /**
-     * Builds and configures all UI elements for the discussions view.
+     * <p> Method: void setupUI() </p>
+     * 
+     * <p> Description: Builds and configures all UI elements for the discussions view. </p>
+     * 
      */
     private static void setupUI() {
         setupLabelUI(label_PageTitle, "Arial", 28, width, Pos.CENTER, 0, 5);
@@ -153,11 +163,18 @@ public class ViewDiscussions {
         });
         
 
-        /**
-         * Adds a blue dot next to unread posts in the list view.
-         */
+        
         // Custom ListCell for showing a blue dot for unread posts
         listView_Posts.setCellFactory(param -> new ListCell<Post>() {
+        	/**
+             * <p> Method: void updateItem(Post post, boolean empty) </p>
+             * 
+             * <p> Description: Adds a blue dot next to unread posts in the list view. </p>
+             * 
+             * @param post is the post object 
+             * 
+             * @param empty is a boolean indicating whether this cell is empty; true if the cell should be cleared
+             */
             @Override
             protected void updateItem(Post post, boolean empty) {
                 super.updateItem(post, empty);
@@ -191,11 +208,19 @@ public class ViewDiscussions {
             ControllerDiscussions.replySelected(newSelection);
         });
 
-        /**
-         * Adds a blue dot next to unread replies in the list view.
-         */
+        
         // Custom ListCell for showing a blue dot for unread replies
         listView_Replies.setCellFactory(param -> new ListCell<Reply>() {
+        	/**
+             * <p> Method: updateItem(Reply reply, boolean empty) </p>
+             * 
+             * <p> Description: Adds a blue dot next to unread replies in the list view. </p>
+             * 
+             * @param reply is the reply object 
+             * 
+             * @param empty is a boolean indicating whether this cell is empty; true if the cell should be cleared
+             * 
+             */
             @Override
             protected void updateItem(Reply reply, boolean empty) {
                 super.updateItem(reply, empty);
@@ -243,6 +268,27 @@ public class ViewDiscussions {
     
     }
 
+    /**
+     * <p> Method: void setupLabelUI(Label l, String ff, double f, double w, Pos p, double x, double y) </p>
+     * 
+     * <p> Description: Sets up label UI elements. </p>
+     * 
+     * @param l  is the label object being configured
+     * 
+	 * @param ff is the font family name used for the label text
+	 * 
+	 * @param f  is the font size of the label text
+	 * 
+	 * @param w  is the minimum width of the label
+	 * 
+	 * @param p  is the Pos alignment of the label text within the button
+	 * 
+	 * @param x  is the X coordinate for the label's position on the pane
+	 * 
+	 * @param y  is the Y coordinate for the label's position on the pane
+	 * 
+     * 
+     */
     private static void setupLabelUI(Label l, String ff, double f, double w, Pos p, double x, double y) {
         l.setFont(Font.font(ff, f));
         l.setMinWidth(w);
@@ -251,6 +297,20 @@ public class ViewDiscussions {
         l.setLayoutY(y);
     }
 
+    /**
+     * <p> Method: void setupButtonUI(Button b, String ff, double f, double w, Pos p, double x, double y) </p>
+     * 
+     * <p> Description: Sets up button UI elements. </p>
+     * 
+     * @param b  is the button object being configured
+	 * @param ff is the font family name used for the button text
+	 * @param f  is the font size of the button text
+	 * @param w  is the minimum width of the button
+	 * @param p  is the Pos alignment of the button text within the button
+	 * @param x  is the X coordinate for the button’s position on the pane
+	 * @param y  is the Y coordinate for the button’s position on the pane
+     * 
+     */
     private static void setupButtonUI(Button b, String ff, double f, double w, Pos p, double x, double y) {
         b.setFont(Font.font(ff, f));
         b.setMinWidth(w);
