@@ -98,7 +98,7 @@ public class ControllerDiscussions {
                              selectedPost.getContent();
         ViewDiscussions.textArea_PostContent.setText(postDetails);
 
-        // Fetch and display replies
+        // Fetch and display replies of a selected post
         List<Reply> replies = theDatabase.getRepliesForPost(selectedPost.getPostID(), ViewDiscussions.theUser.getUserName());
         ObservableList<Reply> observableReplies = FXCollections.observableArrayList(replies);
         ViewDiscussions.listView_Replies.setItems(observableReplies);
@@ -165,6 +165,7 @@ public class ControllerDiscussions {
             threadDialog.setContentText("Thread:");
             Optional<String> threadResult = threadDialog.showAndWait();
 
+            //Default to General Thread
             String thread = threadResult.orElse("General");
 
             // Use a TextArea in a custom dialog for multi-line content input
@@ -265,6 +266,7 @@ public class ControllerDiscussions {
             return;
         }
 
+        //Create a message for confirmation of deletion
         Alert confirmation = new Alert(Alert.AlertType.CONFIRMATION);
         confirmation.setTitle("Confirm Deletion");
         confirmation.setHeaderText("Are you sure you want to delete this post?");
@@ -296,6 +298,7 @@ public class ControllerDiscussions {
         replyDialog.setContentText("Reply:");
         Optional<String> result = replyDialog.showAndWait();
 
+        //Conduct input validation to make sure reply content is not empty
         if (result.isPresent() && !result.get().trim().isEmpty()) {
             String content = result.get();
             Reply newReply = new Reply(0, selectedPost.getPostID(), ViewDiscussions.theUser.getUserName(), content);
@@ -315,9 +318,11 @@ public class ControllerDiscussions {
     protected static void searchPosts() {
         String keyword = ViewDiscussions.textField_Search.getText();
         String thread = ViewDiscussions.comboBox_Threads.getValue();
+        // Search by keyword and by keyword+thread
         List<Post> posts = theDatabase.searchPosts(keyword, thread, ViewDiscussions.theUser.getUserName());
         ObservableList<Post> observablePosts = FXCollections.observableArrayList(posts);
         ViewDiscussions.listView_Posts.setItems(observablePosts);
+        // Updates total/unread post counts after search filter
         updatePostSummary();
         updateReplySummary();
     }
@@ -409,10 +414,11 @@ public class ControllerDiscussions {
         dialog.setContentText("Reply:");
 
         Optional<String> result = dialog.showAndWait();
+        //Conduct input validation to make sure reply content is not empty
         if (result.isPresent() && !result.get().trim().isEmpty()) {
             selectedReply.setContent(result.get());
             theDatabase.update(selectedReply); //change
-            postSelected(ViewDiscussions.listView_Posts.getSelectionModel().getSelectedItem()); // This now calls updateReplySummary()
+            postSelected(ViewDiscussions.listView_Posts.getSelectionModel().getSelectedItem()); //reload replies
         } else {
             showError("Reply content cannot be empty.");
         }
@@ -439,6 +445,7 @@ public class ControllerDiscussions {
             return;
         }
 
+        //Create a message for confirmation of reply deletion
         Alert confirmation = new Alert(Alert.AlertType.CONFIRMATION);
         confirmation.setTitle("Confirm Deletion");
         confirmation.setHeaderText("Are you sure you want to delete this reply?");
@@ -447,7 +454,7 @@ public class ControllerDiscussions {
         Optional<ButtonType> result = confirmation.showAndWait();
         if (result.isPresent() && result.get() == ButtonType.OK) {
         	theDatabase.delete(selectedReply); //change
-            postSelected(ViewDiscussions.listView_Posts.getSelectionModel().getSelectedItem()); // This now calls updateReplySummary()
+            postSelected(ViewDiscussions.listView_Posts.getSelectionModel().getSelectedItem()); // reload replies
         }
         updatePostSummary();
         updateReplySummary();
@@ -486,16 +493,20 @@ public class ControllerDiscussions {
      * 
      */
     private static void updatePostSummary() {
+    	// Get currently displayed posts (can be all, filtered, or searched)
         List<Post> currentPosts = ViewDiscussions.listView_Posts.getItems();
+        
+        // If the list is empty, display default text
         if (currentPosts == null || currentPosts.isEmpty()) {
             ViewDiscussions.label_PostSummary.setText("No posts to display");
             return;
         }
         
+        // Count how many of those posts are unread
         long unreadCount = currentPosts.stream()
                 .filter(post -> !post.isViewed())
                 .count();
-        
+        // Display the total and unread counts
         ViewDiscussions.label_PostSummary.setText(
             String.format("Showing %d posts (%d unread)", 
                 currentPosts.size(), unreadCount)
@@ -524,10 +535,11 @@ public class ControllerDiscussions {
             return;
         }
         
+        // Count how many of replies posts are unread
         long unreadCount = currentReplies.stream()
                 .filter(reply -> !reply.isViewed())
                 .count();
-        
+        // Display the total and unread counts
         ViewDiscussions.label_ReplySummary.setText(
             String.format("%d replies (%d unread)", 
                 currentReplies.size(), unreadCount)
