@@ -2,6 +2,7 @@
 package entityClasses;
 
 import java.time.LocalDateTime;
+import java.util.EnumSet;
 
 /**
  * <p> Title: Reply Class </p>
@@ -11,9 +12,9 @@ import java.time.LocalDateTime;
  *
  * <p> Copyright: Lynn Robert Carter © 2025 </p>
  *
- * @author Kushal Gadamsetty
+ * @author Neha Kanjamala
  *
- * @version 1.01	2025-10-20 Added viewed attribute
+ * @version 1.01	2025-11-11 Added visibility/moderation
  */
 public class Reply extends Post{
 
@@ -45,6 +46,36 @@ public class Reply extends Post{
         this.viewed = false; //added
         this.timestamp = LocalDateTime.now(); // Set the timestamp to the current time
     }
+    
+    
+    /**
+     * <p> NEW Constructor: Reply(int replyID, int postID, String authorUsername, String content,
+     *     boolean visible, String actionUser, String actionReason, LocalDateTime actionTimestamp) </p>
+     *
+     * <p> Description: This constructor adds moderation/visibility control. </p>
+     *
+     * @param replyID          unique id for the reply
+     * @param postID           id of the parent post (used as the Post id)
+     * @param authorUsername   reply author
+     * @param content          reply body
+     * @param visible          visibility to students
+     * @param actionUser       who performed the moderation action
+     * @param actionReason     why the action occurred
+     * @param actionTimestamp  when the action occurred
+     */
+    public Reply(int replyID, int postID, String authorUsername, String content,
+                 boolean visible, String actionUser, String actionReason, LocalDateTime actionTimestamp) {
+        super(postID,
+              authorUsername == null ? "" : authorUsername.trim(),
+              "",                                        // title unused for Reply
+              content == null ? "" : content.trim(),
+              "",                                        // thread unused for Reply
+              false, false, 0, 0,                        // deleted, viewed, reply counts
+              visible, actionUser, actionReason, actionTimestamp);
+        this.replyID = replyID;
+        this.viewed = false;
+        this.timestamp = LocalDateTime.now();
+    }
 
     
     // Getters
@@ -60,7 +91,7 @@ public class Reply extends Post{
     public int getReplyID() { return replyID; }
     
     /*****
-     * <p> Method: boolean isViewed()) </p>
+     * <p> Method: boolean isViewed() </p>
      * 
      * <p> Description: This getter returns the reply's viewed attribute. It implements read in the CRUD functionalities. </p>
      * 
@@ -103,4 +134,18 @@ public class Reply extends Post{
      */
  // Returns if the has been viewed.
     public void setViewed(boolean viewed) { this.viewed = viewed; } // Added setter for viewed
+    
+    /*****
+     * <p> Method: String getDisplayContent(EnumSet&lt;database.Database.Role&gt; roles) </p>
+     * 
+     * <p> Description: Convenience instance method for replies that delegates to 
+     * Post.getDisplayContent(this, roles) without mutating the underlying content. </p>
+     *
+     * @param roles The set of roles of the current user.
+     * 
+     * @return A String representing the appropriate content to display for this reply.
+     */
+    public String getDisplayContent(EnumSet<database.Database.Role> roles) {
+        return Post.getDisplayContent(this, roles);
+    }
 }

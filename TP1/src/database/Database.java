@@ -1144,4 +1144,17 @@ public class Database {
             e.printStackTrace();
         }
     }
+    
+    // For Testing Purposes Only
+    
+    // Declares 3 types of roles
+    public enum Role { ADMIN, STUDENT, STAFF }
+
+    public java.util.EnumSet<Role> getRoles(entityClasses.User user) {
+        java.util.EnumSet<Role> roles = java.util.EnumSet.noneOf(Role.class);
+        if (loginAdmin(user))   roles.add(Role.ADMIN);
+        if (loginStudent(user)) roles.add(Role.STUDENT);
+        if (loginStaff(user))   roles.add(Role.STAFF);
+        return roles;
+    }
 }
