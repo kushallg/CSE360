@@ -9,9 +9,9 @@ import javafx.scene.shape.Line;
 import javafx.scene.text.Font;
 import javafx.stage.Stage;
 import database.Database;
-//import database.Database;
 import entityClasses.User;
-
+import guiDiscussions.ViewDiscussions;   // (Optional but mirrors ViewStudentHome)
+import guiUserUpdate.ViewUserUpdate;    // To mirror student home "Account Update" behavior, if desired
 
 /*******
  * <p> Title: ViewStaffHome Class. </p>
@@ -24,7 +24,7 @@ import entityClasses.User;
  * 
  * @author Lynn Robert Carter
  * 
- * @version 1.00		2025-04-20 Initial version
+ * @version 1.01        2025-10-18 Added Discussions button to match Student Home
  *  
  */
 
@@ -53,10 +53,8 @@ public class ViewStaffHome {
 	// This is a separator and it is used to partition the GUI for various tasks
 	protected static Line line_Separator1 = new Line(20, 95, width-20, 95);
 
-	// GUI ARea 2: This is a stub, so there are no widgets here.  For an actual role page, this are
-	// would contain the widgets needed for the user to play the assigned role.
-	
-	
+	// GUI Area 2: Entry point to the student discussion board
+	protected static Button button_GoToDiscussions = new Button("Go to Discussions");
 	
 	// This is a separator and it is used to partition the GUI for various tasks
 	protected static Line line_Separator4 = new Line(20, 525, width-20,525);
@@ -123,9 +121,9 @@ public class ViewStaffHome {
 		theDatabase.getUserAccountDetails(user.getUserName());
 		applicationMain.FoundationsMain.activeHomePage = theRole;
 		
-		label_UserDetails.setText("User: " + theUser.getUserName());// Set the username
+		label_UserDetails.setText("User: " + theUser.getUserName()); // Set the username
 
-		// Set the title for the window, display the page, and wait for the Admin to do something
+		// Set the title for the window, display the page, and wait for the Staff to do something
 		theStage.setTitle("CSE 360 Foundations: Staff Home Page");
 		theStage.setScene(theStaffHomeScene);						// Set this page onto the stage
 		theStage.show();											// Display it to the user
@@ -148,10 +146,6 @@ public class ViewStaffHome {
 		theRootPane = new Pane();
 		theStaffHomeScene = new Scene(theRootPane, width, height);	// Create the scene
 		
-		// Set the title for the window
-		
-		// Populate the window with the title and other common widgets and set their static state
-		
 		// GUI Area 1
 		label_PageTitle.setText("Staff Home Page");
 		setupLabelUI(label_PageTitle, "Arial", 28, width, Pos.CENTER, 0, 5);
@@ -160,12 +154,15 @@ public class ViewStaffHome {
 		setupLabelUI(label_UserDetails, "Arial", 20, width, Pos.BASELINE_LEFT, 20, 55);
 		
 		setupButtonUI(button_UpdateThisUser, "Dialog", 18, 170, Pos.CENTER, 610, 45);
-		button_UpdateThisUser.setOnAction((event) -> {ControllerStaffHome.performUpdate(); });
+		button_UpdateThisUser.setOnAction((event) -> {
+			ViewUserUpdate.displayUserUpdate(theStage, theUser);
+		});
 		
-		// GUI Area 2
-		
-			// This is a stub, so this area is empty
-		
+		// GUI Area 2: Staff entry to student discussion board
+		setupButtonUI(button_GoToDiscussions, "Dialog", 18, 250, Pos.CENTER, (width - 250) / 2, 250);
+		button_GoToDiscussions.setOnAction((event) -> {
+			ControllerStaffHome.goToDiscussions();
+		});
 		
 		// GUI Area 3
         setupButtonUI(button_Logout, "Dialog", 18, 250, Pos.CENTER, 20, 540);
@@ -174,11 +171,10 @@ public class ViewStaffHome {
         setupButtonUI(button_Quit, "Dialog", 18, 250, Pos.CENTER, 300, 540);
         button_Quit.setOnAction((event) -> {ControllerStaffHome.performQuit(); });
 
-		// This is the end of the GUI initialization code
-		
 		// Place all of the widget items into the Root Pane's list of children
         theRootPane.getChildren().addAll(
 			label_PageTitle, label_UserDetails, button_UpdateThisUser, line_Separator1,
+			button_GoToDiscussions,
 	        line_Separator4, button_Logout, button_Quit);
 	}
 	

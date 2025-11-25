@@ -20,6 +20,8 @@ import javafx.scene.shape.Circle;
 import javafx.scene.text.Font;
 import javafx.stage.Stage;
 import javafx.geometry.Pos;
+import database.Database;           // <<< NEW
+import java.util.List;             // <<< NEW
 
 /**
  * <p> Title: ViewDiscussions Class </p>
@@ -54,10 +56,13 @@ public class ViewDiscussions {
     protected static Button button_Unread = new Button("Unread");
     protected static Button button_EditReply = new Button("Edit Reply");
     protected static Button button_DeleteReply = new Button("Delete Reply");
-    // NEW: Button to filter and display only unread replies for the selected post
+    // Button to filter and display only unread replies for the selected post
     protected static Button button_UnreadReplies = new Button("Unread Replies");
+    // Moderation and Visibility buttons
+    protected static Button button_ToggleVisibility = new Button("Hide / Unhide");
+    protected static Button button_FlagContent = new Button("Flag Content");
 
-    // New UI components for threads and search
+    // UI components for threads and search
     protected static ComboBox<String> comboBox_Threads = new ComboBox<>();
     protected static TextField textField_Search = new TextField();
     protected static Button button_Search = new Button("Search");
@@ -69,6 +74,9 @@ public class ViewDiscussions {
     public static Scene theDiscussionsScene = null;
     protected static Label label_PostSummary = new Label();
     protected static Label label_ReplySummary = new Label();
+
+    // <<< NEW: database reference for computing student-visible reply counts >>>
+    private static Database theDatabase = applicationMain.FoundationsMain.database;
 
     /**
      * <p> Method: void displayDiscussions(Stage ps, User user) </p>
@@ -95,6 +103,21 @@ public class ViewDiscussions {
         theStage.setTitle("CSE 360 Foundations: Discussion Forum");
         theStage.setScene(theDiscussionsScene);
         theStage.show();
+        
+        boolean isStaffOrAdmin =
+                theUser != null &&
+                (theUser.getAdminRole() ||
+                 (theUser.getNewStaff() && !theUser.getNewStudent()));
+
+        // Hide from students completely
+        button_ToggleVisibility.setVisible(isStaffOrAdmin);
+        button_ToggleVisibility.setManaged(isStaffOrAdmin);
+        button_FlagContent.setVisible(isStaffOrAdmin);
+        button_FlagContent.setManaged(isStaffOrAdmin);
+
+        // Also disable them when hidden, just to be safe
+        button_ToggleVisibility.setDisable(!isStaffOrAdmin);
+        button_FlagContent.setDisable(!isStaffOrAdmin);
     }
 
     /**
@@ -187,7 +210,37 @@ public class ViewDiscussions {
                     if (post.isViewed()) {
                         dot.setVisible(false);
                     }
-                    hbox.getChildren().addAll(dot, new Label(post.toString()));
+
+                    // <<< NEW: for students, recompute reply counts using only visible replies >>>
+                    int activeRole = applicationMain.FoundationsMain.activeHomePage;
+                    boolean isStudentRole = (activeRole == 2);
+
+                    String labelText;
+                    if (isStudentRole && theUser != null) {
+                        List<Reply> allReplies =
+                                theDatabase.getRepliesForPost(post.getPostID(), theUser.getUserName());
+
+                        long visibleCount = allReplies.stream()
+                                .filter(Reply::isVisible)
+                                .count();
+
+                        long unreadVisible = allReplies.stream()
+                                .filter(r -> r.isVisible() && !r.isViewed())
+                                .count();
+
+                        labelText = String.format(
+                                "%s (%s) - Replies: %d (Unread: %d)",
+                                post.getTitle(),
+                                post.getThread(),
+                                visibleCount,
+                                unreadVisible
+                        );
+                    } else {
+                        // Admin/staff (or no user) see the original DB-counted values
+                        labelText = post.toString();
+                    }
+
+                    hbox.getChildren().addAll(dot, new Label(labelText));
                     setGraphic(hbox);
                 }
             }
@@ -223,7 +276,7 @@ public class ViewDiscussions {
              */
             @Override
             protected void updateItem(Reply reply, boolean empty) {
-                super.updateItem(reply, empty);
+            	super.updateItem(reply, empty);
                 if (empty || reply == null) {
                     setText(null);
                     setGraphic(null);
@@ -233,7 +286,21 @@ public class ViewDiscussions {
                     if (reply.isViewed()) {
                         dot.setVisible(false);
                     }
-                    hbox.getChildren().addAll(dot, new Label(reply.getAuthorUsername() + ": " + reply.getContent()));
+
+                    // <<< THIS IS THE NEW VISIBILITY / ROLE LOGIC >>>
+                    boolean isStaffOrAdmin = (ViewDiscussions.theUser != null) &&
+                            (ViewDiscussions.theUser.getAdminRole() || ViewDiscussions.theUser.getNewStaff());
+
+                    String labelText;
+                    if (!reply.isVisible() && isStaffOrAdmin) {
+                        // Hidden, but staff/admin can see that it exists
+                        labelText =  reply.getAuthorUsername() + ": " + reply.getContent() + " [Hidden by Staff/Admin]";
+                    } else {
+                        // Normal visible reply, or (if it ever slipped through) hidden for a student
+                        labelText = reply.getAuthorUsername() + ": " + reply.getContent();
+                    }
+
+                    hbox.getChildren().addAll(dot, new Label(labelText));
                     setGraphic(hbox);
                 }
             }
@@ -260,34 +327,42 @@ public class ViewDiscussions {
 
         setupButtonUI(button_Return, "Dialog", 14, 150, Pos.CENTER, 620, 520);
         button_Return.setOnAction(event -> ControllerDiscussions.returnToHome());
+        
+        boolean isStaffOrAdmin = (ViewDiscussions.theUser != null) &&
+                (ViewDiscussions.theUser.getAdminRole() || ViewDiscussions.theUser.getNewStaff());
 
-        // NEW: Add the Unread Replies button to the root pane so it's displayed on screen
-        theRootPane.getChildren().addAll(label_PageTitle, comboBox_Threads, textField_Search, button_Search, button_MyPosts, button_Unread, button_UnreadReplies,
-                listView_Posts, label_PostSummary, textArea_PostContent, listView_Replies, label_ReplySummary,
-                button_CreatePost, button_EditPost, button_DeletePost, button_AddReply, button_EditReply, button_DeleteReply, button_Return);
-    
+        // Normal buttons (everyone sees these)
+        theRootPane.getChildren().addAll(
+                label_PageTitle, comboBox_Threads, textField_Search, button_Search,
+                button_MyPosts, button_Unread, button_UnreadReplies,
+                listView_Posts, label_PostSummary, textArea_PostContent,
+                listView_Replies, label_ReplySummary,
+                button_CreatePost, button_EditPost, button_DeletePost,
+                button_AddReply, button_EditReply, button_DeleteReply,
+                button_Return
+        );
+
+        // They will be shown/hidden per user in displayDiscussions
+        setupButtonUI(button_ToggleVisibility, "Dialog", 14, 150, Pos.CENTER, 320, 560);
+        button_ToggleVisibility.setOnAction(event -> ControllerDiscussions.toggleVisibilityForSelection());
+
+        setupButtonUI(button_FlagContent, "Dialog", 14, 150, Pos.CENTER, 470, 560);
+        button_FlagContent.setOnAction(event -> ControllerDiscussions.flagSelectedContent());
+
+        theRootPane.getChildren().addAll(button_ToggleVisibility, button_FlagContent);
     }
 
     /**
      * <p> Method: void setupLabelUI(Label l, String ff, double f, double w, Pos p, double x, double y) </p>
-     * 
      * <p> Description: Sets up label UI elements. </p>
      * 
      * @param l  is the label object being configured
-     * 
 	 * @param ff is the font family name used for the label text
-	 * 
 	 * @param f  is the font size of the label text
-	 * 
 	 * @param w  is the minimum width of the label
-	 * 
 	 * @param p  is the Pos alignment of the label text within the button
-	 * 
 	 * @param x  is the X coordinate for the label's position on the pane
-	 * 
 	 * @param y  is the Y coordinate for the label's position on the pane
-	 * 
-     * 
      */
     private static void setupLabelUI(Label l, String ff, double f, double w, Pos p, double x, double y) {
         l.setFont(Font.font(ff, f));

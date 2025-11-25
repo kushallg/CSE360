@@ -15,9 +15,8 @@ import entityClasses.Reply;
 /**
  * HidePostTests
  *
- * <p>Automated JUnit 4 tests for verifying post/reply visibility and moderation behavior
- * using role sets directly (no database calls). Tests assert the display text returned
- * by Post.getDisplayContent(...) and Reply.getDisplayContent(...).</p>
+ * <p> Automated JUnit 4 tests to test that staff can hide posts and replies and for verifying post/reply visibility and moderation behavior
+ * using role sets directly. </p>
  */
 public class HidePostTests {
 
