@@ -667,10 +667,8 @@ public class ControllerDiscussions {
             alert.showAndWait();
             return;
         }
-
         Reply selectedReply = ViewDiscussions.listView_Replies.getSelectionModel().getSelectedItem();
         Post selectedPost = ViewDiscussions.listView_Posts.getSelectionModel().getSelectedItem();
-
         if (selectedReply == null && selectedPost == null) {
             Alert alert = new Alert(Alert.AlertType.WARNING);
             alert.setHeaderText(null);
@@ -678,32 +676,27 @@ public class ControllerDiscussions {
             alert.showAndWait();
             return;
         }
-
-        // Ask for a reason (can be optional or required; ConOps suggests a reason)
+        // Ask for a reason (required)
         TextInputDialog reasonDialog = new TextInputDialog();
         reasonDialog.setTitle("Moderation Reason");
         reasonDialog.setHeaderText("Enter the reason for this visibility change.");
         reasonDialog.setContentText("Reason:");
 
         Optional<String> reasonResult = reasonDialog.showAndWait();
-        String reason = reasonResult.isPresent() ? reasonResult.get().trim() : "";
+        String reason = (reasonResult.isPresent() ? reasonResult.get().trim() : "");
 
         if (reason.isEmpty()) {
-            // For hide/unhide we allow empty if you prefer; if you want to enforce, uncomment:
-            // Alert alert = new Alert(Alert.AlertType.ERROR);
-            // alert.setHeaderText(null);
-            // alert.setContentText("Must Have Reason for Flagging Content");
-            // alert.showAndWait();
-            // return;
+            Alert alert = new Alert(Alert.AlertType.ERROR);
+            alert.setHeaderText(null);
+            alert.setContentText("Must Have Reason to Complete Action");
+            alert.showAndWait();
+            return;
         }
-
         String currentUser = ViewDiscussions.theUser.getUserName();
-
         if (selectedReply != null) {
             boolean currentlyVisible = selectedReply.isVisible();
             int replyID = selectedReply.getReplyID();
             int parentPostID = selectedReply.getPostID();
-
             if (currentlyVisible) {
                 theDatabase.hideReply(replyID, parentPostID, currentUser, reason);
                 selectedReply.setVisible(false);
@@ -711,12 +704,10 @@ public class ControllerDiscussions {
                 theDatabase.unhideReply(replyID, parentPostID, currentUser, reason);
                 selectedReply.setVisible(true);
             }
-
             ViewDiscussions.listView_Replies.refresh();
         } else if (selectedPost != null) {
             boolean currentlyVisible = selectedPost.isVisible();
             int postID = selectedPost.getPostID();
-
             if (currentlyVisible) {
                 theDatabase.hidePost(postID, currentUser, reason);
                 selectedPost.setVisible(false);
@@ -724,11 +715,11 @@ public class ControllerDiscussions {
                 theDatabase.unhidePost(postID, currentUser, reason);
                 selectedPost.setVisible(true);
             }
-
             // Re-apply filtering and refresh
             initializeView();
         }
     }
+
     
     /**
      * <p> Method: void flagSelectedContent()</p>
@@ -747,7 +738,6 @@ public class ControllerDiscussions {
 
         Reply selectedReply = ViewDiscussions.listView_Replies.getSelectionModel().getSelectedItem();
         Post selectedPost = ViewDiscussions.listView_Posts.getSelectionModel().getSelectedItem();
-
         if (selectedReply == null && selectedPost == null) {
             Alert alert = new Alert(Alert.AlertType.WARNING);
             alert.setHeaderText(null);
@@ -755,25 +745,22 @@ public class ControllerDiscussions {
             alert.showAndWait();
             return;
         }
-
         TextInputDialog reasonDialog = new TextInputDialog();
         reasonDialog.setTitle("Flag Content");
         reasonDialog.setHeaderText("Provide a reason for flagging this content.");
         reasonDialog.setContentText("Reason:");
 
         Optional<String> reasonResult = reasonDialog.showAndWait();
-        if (!reasonResult.isPresent() || reasonResult.get().trim().isEmpty()) {
-            // REQUIRED error message from test details
+        String reason = (reasonResult.isPresent() ? reasonResult.get().trim() : "");
+        if (reason.isEmpty()) {
             Alert alert = new Alert(Alert.AlertType.ERROR);
             alert.setHeaderText(null);
-            alert.setContentText("Must Have Reason for Flagging Content");
+            alert.setContentText("Must Have Reason to Complete Action");
             alert.showAndWait();
             return;
         }
 
-        String reason = reasonResult.get().trim();
         String currentUser = ViewDiscussions.theUser.getUserName();
-
         if (selectedReply != null) {
             theDatabase.flagReply(selectedReply.getReplyID(), selectedReply.getPostID(), currentUser, reason);
         } else if (selectedPost != null) {

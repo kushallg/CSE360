@@ -1328,18 +1328,9 @@ public class Database {
      * @param reason   The reason for the action (may be null for UNHIDE).
      */
     public void logPostVisibilityAction(int postID, String username, String action, String reason) {
-        String sql = "INSERT INTO moderation_log "
-                   + "(postID, username, action, reason, timestamp) "
-                   + "VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)";
-        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
-            pstmt.setInt(1, postID);
-            pstmt.setString(2, username);
-            pstmt.setString(3, action);
-            pstmt.setString(4, reason);
-            pstmt.executeUpdate();
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
+        // Delegate to the unified moderation logger so legacy call sites
+        // still populate the moderation_log table and emit console output.
+        logModerationAction(postID, username, action, reason);
     }
     
     // NEW
@@ -1356,11 +1347,57 @@ public class Database {
             pstmt.setString(2, username);
             pstmt.setString(3, action);
             pstmt.setString(4, reason);
-            pstmt.executeUpdate();
+            int rows = pstmt.executeUpdate();
+
+            // Console trace for moderation activity (for TP3 / manual review)
+            System.out.println(
+                "[MODERATION] postID=" + postID +
+                " user=" + username +
+                " action=" + action +
+                " reason=" + (reason == null ? "" : reason) +
+                " rowsInserted=" + rows
+            );
         } catch (SQLException e) {
             e.printStackTrace();
         }
     }
+
+    /**
+     * <p> Method: void printModerationLog() </p>
+     * 
+     * <p> Description: Convenience helper that reads all rows from the moderation_log
+     * table and prints them to the console for moderation / testing purposes. </p>
+     */
+    public void printModerationLog() {
+        String sql = "SELECT logID, postID, username, action, reason, timestamp "
+                   + "FROM moderation_log ORDER BY logID";
+        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+            ResultSet rs = pstmt.executeQuery();
+
+            System.out.println("========== MODERATION LOG ==========");
+            while (rs.next()) {
+                int logID = rs.getInt("logID");
+                int loggedPostID = rs.getInt("postID");
+                String loggedUser = rs.getString("username");
+                String loggedAction = rs.getString("action");
+                String loggedReason = rs.getString("reason");
+                Timestamp ts = rs.getTimestamp("timestamp");
+
+                System.out.println(
+                    "#" + logID +
+                    " postID=" + loggedPostID +
+                    " user=" + loggedUser +
+                    " action=" + loggedAction +
+                    " reason=" + loggedReason +
+                    " time=" + ts
+                );
+            }
+            System.out.println("=========================================");
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+    
 
     
     // For Testing Purposes Only
