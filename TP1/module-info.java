@@ -1,5 +1,5 @@
 module PasswordEvaluationTestbed {
-	//requires javafx.controls;
+	requires javafx.controls;
 	
 	opens passwordEvaluationTestbedMain to javafx.graphics, javafx.fxml;
 }
