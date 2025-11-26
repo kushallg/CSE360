@@ -368,9 +368,6 @@ public class ViewDiscussions {
         setupButtonUI(button_Return, "Dialog", 14, 150, Pos.CENTER, 620, 520);
         button_Return.setOnAction(event -> ControllerDiscussions.returnToHome());
 
-        boolean isStaffOrAdmin = (ViewDiscussions.theUser != null) &&
-                (ViewDiscussions.theUser.getAdminRole() || ViewDiscussions.theUser.getNewStaff());
-
         // Normal buttons (everyone sees these)
         theRootPane.getChildren().addAll(
                 label_PageTitle, comboBox_Threads, textField_Search, button_Search,

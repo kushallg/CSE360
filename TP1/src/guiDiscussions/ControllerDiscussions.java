@@ -858,11 +858,6 @@ public class ControllerDiscussions {
                         currentReplies.size(), unreadCount));
     }
 
-    protected static boolean isCurrentUserStaffOrAdmin() {
-        entityClasses.User u = ViewDiscussions.theUser;
-        return u != null && (u.getAdminRole() || (u.getNewStaff() && !u.getNewStudent()));
-    }
-
     /*****
      * <p>
      * Method: boolean isReplyVisibleToCurrentSession()
