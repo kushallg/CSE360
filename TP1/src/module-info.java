@@ -1,6 +1,7 @@
 module FoundationsF25 {
     requires javafx.controls;
     requires java.sql;
+    requires junit;
 
     exports entityClasses;
     exports guiDiscussions;

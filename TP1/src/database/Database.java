@@ -1060,6 +1060,11 @@ public class Database {
         }
     }
 
+    /**
+     * Creates a new reply in the database.
+     * 
+     * @param reply The Reply object to be created.
+     */
     public void create(Reply reply) { // overload
         String sql = "INSERT INTO repliesDB (postID, authorUsername, content, timestamp) VALUES (?, ?, ?, ?)";
         try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
@@ -1425,6 +1430,11 @@ public class Database {
         }
     }
 
+    /**
+     * Deletes a post from the database.
+     * 
+     * @param post The Post object to be deleted.
+     */
     public void delete(Post post) { // overload
         deletePost(post.getPostID());
     }
@@ -1591,6 +1601,11 @@ public class Database {
      * 
      * @param reply The Reply object with updated information.
      */
+    /**
+     * Updates an existing reply in the database.
+     * 
+     * @param reply The Reply object with updated information.
+     */
     public void update(Reply reply) { // overload
         String sql = "UPDATE repliesDB SET content = ? WHERE replyID = ?";
         try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
@@ -1617,6 +1632,11 @@ public class Database {
         }
     }
 
+    /**
+     * Deletes a reply from the database.
+     * 
+     * @param reply The Reply object to be deleted.
+     */
     public void delete(Reply reply) { // overload
         deleteReply(reply.getReplyID());
     }
@@ -1680,6 +1700,12 @@ public class Database {
 
     // --- ADMIN REQUESTS OPERATIONS ---
 
+    /**
+     * Creates a new admin request.
+     * 
+     * @param requester   The username of the requester.
+     * @param description The description of the request.
+     */
     public void createAdminRequest(String requester, String description) {
         String sql = "INSERT INTO admin_requests (requester, description, status, adminComments, created_at, updated_at) "
                 + "VALUES (?, ?, 'Open', '', ?, ?)";
@@ -1800,6 +1826,11 @@ public class Database {
         }
     }
 
+    /**
+     * Retrieves all admin requests from the database.
+     * 
+     * @return A List of AdminRequest objects.
+     */
     public List<entityClasses.AdminRequest> getAllAdminRequests() {
         List<entityClasses.AdminRequest> list = new ArrayList<>();
         String sql = "SELECT * FROM admin_requests ORDER BY updated_at DESC";
@@ -1821,6 +1852,11 @@ public class Database {
         return list;
     }
 
+    /**
+     * Updates an existing admin request.
+     * 
+     * @param req The AdminRequest object with updated information.
+     */
     public void updateAdminRequest(entityClasses.AdminRequest req) {
         String sql = "UPDATE admin_requests SET description = ?, status = ?, adminComments = ?, updated_at = ? WHERE requestID = ?";
         try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
@@ -1855,6 +1891,11 @@ public class Database {
 
     // --- THREAD MANAGEMENT OPERATIONS ---
 
+    /**
+     * Creates a new discussion thread.
+     * 
+     * @param title The title of the new thread.
+     */
     public void createThread(String title) {
         String sql = "INSERT INTO discussion_threads (title, visible, created_at) VALUES (?, TRUE, ?)";
         try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
@@ -1866,6 +1907,11 @@ public class Database {
         }
     }
 
+    /**
+     * Retrieves all discussion threads.
+     * 
+     * @return A List of DiscussionThread objects.
+     */
     public List<entityClasses.DiscussionThread> getAllThreads() {
         List<entityClasses.DiscussionThread> list = new ArrayList<>();
         String sql = "SELECT * FROM discussion_threads ORDER BY created_at ASC";
@@ -1884,6 +1930,11 @@ public class Database {
     }
 
     // For Students: Only visible threads
+    /**
+     * Retrieves titles of all visible discussion threads.
+     * 
+     * @return A List of thread titles.
+     */
     public List<String> getVisibleThreadTitles() {
         List<String> list = new ArrayList<>();
         list.add("All Threads");
@@ -1900,6 +1951,11 @@ public class Database {
     }
 
     // For Staff/Admin: All threads (including hidden)
+    /**
+     * Retrieves titles of all discussion threads, including hidden ones.
+     * 
+     * @return A List of thread titles.
+     */
     public List<String> getAllThreadTitles() {
         List<String> list = new ArrayList<>();
         list.add("All Threads");
@@ -1915,6 +1971,13 @@ public class Database {
         return list;
     }
 
+    /**
+     * Updates a discussion thread's title and visibility.
+     * 
+     * @param oldTitle The current title of the thread.
+     * @param newTitle The new title of the thread.
+     * @param visible  The new visibility status.
+     */
     public void updateThread(String oldTitle, String newTitle, boolean visible) {
         String sqlThread = "UPDATE discussion_threads SET title = ?, visible = ? WHERE title = ?";
         String sqlPosts = "UPDATE postsDB SET thread = ? WHERE thread = ?";
@@ -1948,6 +2011,11 @@ public class Database {
         }
     }
 
+    /**
+     * Deletes a discussion thread.
+     * 
+     * @param title The title of the thread to delete.
+     */
     public void deleteThread(String title) {
         String sql = "DELETE FROM discussion_threads WHERE title = ?";
         try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
