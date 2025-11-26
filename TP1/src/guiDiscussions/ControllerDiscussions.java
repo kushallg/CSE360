@@ -86,8 +86,6 @@ public class ControllerDiscussions {
             int visibleReplyCount = visibleReplies.size();
             int visibleUnreadCount = (int) visibleReplies.stream().filter(r -> !r.isViewed()).count();
 
-            // create an adjusted Post object (or modify existing) with the counts
-            // easiest: reuse p and set counts via setters we added
             p.setReplyCount(visibleReplyCount);
             p.setUnreadReplyCount(visibleUnreadCount);
             adjustedPosts.add(p);
@@ -207,9 +205,6 @@ public class ControllerDiscussions {
                 ViewDiscussions.textArea_PostContent.setText(existing + "\n\n[private feedback]");
             }
 
-            
-            // By using Platform.runLater, we schedule the post list update to happen
-            // after the current UI event is finished, preventing the crash.
             Platform.runLater(() -> {
                 int selectedIndex = ViewDiscussions.listView_Posts.getSelectionModel().getSelectedIndex();
                 initializeView();
@@ -741,12 +736,13 @@ public class ControllerDiscussions {
         );
     }
     
-    /**
-     * Returns true if the given reply should be visible to the current UI session role
-     * (i.e., depending on FoundationsMain.activeHomePage and the currently signed-in user).
+    /*****
+     * <p> Method: boolean isReplyVisibleToCurrentSession() </p>
+     * 
+     * <p> Description: Check if reply is visible to current user based on visibility settings and role. </p>
+     * 
      */
     private static boolean isReplyVisibleToCurrentSession(Reply r) {
-        // Roles: (as your app uses) Admin=1, Student=2, Staff=3 (adjust if different)
         int activeRole = applicationMain.FoundationsMain.activeHomePage;
         String currentUsername = ViewDiscussions.theUser == null ? null : ViewDiscussions.theUser.getUserName();
 

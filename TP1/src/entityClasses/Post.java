@@ -334,9 +334,25 @@ public class Post {
     // Sets if post was viewed.
     public void setViewed(boolean viewed) { this.viewed = viewed; } 
     
- // Sets the replyCount (used by controller to recalc per-session counts)
+    /*****
+     * <p> Method: void setReplyCount(int replyCount) </p>
+     * 
+     * <p> Description: This setter defines the reply count attribute,</p>
+     * 
+     * @param replyCount is an int that specifies the number of replies under the post.
+     * 
+     */
+    // Sets the replyCount (used by controller to recalc per-session counts)
     public void setReplyCount(int replyCount) { this.replyCount = replyCount; }
 
+    /*****
+     * <p> Method: void setUnreadReplyCount(int unreadReplyCount) </p>
+     * 
+     * <p> Description: This setter defines the unread reply count attribute.</p>
+     * 
+     * @param unreadReplyCount is an int that specifies the number of unread replies under the post.
+     * 
+     */
     // Sets the unreadReplyCount (used by controller to recalc per-session counts)
     public void setUnreadReplyCount(int unreadReplyCount) { this.unreadReplyCount = unreadReplyCount; }
 
