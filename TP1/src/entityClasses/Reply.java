@@ -298,7 +298,7 @@ public class Reply extends Post{
     public String toString() {
         String base = this.getAuthorUsername() + ": " + this.getContent();
         if ("private".equalsIgnoreCase(this.visibility)) {
-            base += " [private feedback]";
+            base += " [Private Feedback]";
         }
         return base;
     }
