@@ -1,4 +1,3 @@
- // BOLD CHANGE:
 package guiDiscussions;
 
 import database.Database;
@@ -163,7 +162,7 @@ public class ControllerDiscussions {
         
         // label for staff/admin when post is hidden
         if (!selectedPost.isVisible() && isCurrentUserStaffOrAdmin()) {
-            postDetails += "[Hidden by Staff/Admin]\n\n";
+            postDetails += "[Hidden by Staff]\n\n";
         }
         
         postDetails += "Title: " + selectedPost.getTitle() + "\n" +
@@ -798,7 +797,7 @@ public class ControllerDiscussions {
             return;
         }
 
-        // Ask for a reason (can be optional or required; ConOps suggests a reason)
+        // Ask for a reason (required)
         TextInputDialog reasonDialog = new TextInputDialog();
         reasonDialog.setTitle("Moderation Reason");
         reasonDialog.setHeaderText("Enter the reason for this visibility change.");
@@ -808,6 +807,11 @@ public class ControllerDiscussions {
         String reason = reasonResult.isPresent() ? reasonResult.get().trim() : "";
 
         if (reason.isEmpty()) {
+            Alert alert = new Alert(Alert.AlertType.ERROR);
+            alert.setHeaderText(null);
+            alert.setContentText("Must Have Reason to Complete Action");
+            alert.showAndWait();
+            return;
         }
 
         String currentUser = ViewDiscussions.theUser.getUserName();
@@ -876,10 +880,9 @@ public class ControllerDiscussions {
 
         Optional<String> reasonResult = reasonDialog.showAndWait();
         if (!reasonResult.isPresent() || reasonResult.get().trim().isEmpty()) {
-            // REQUIRED error message from test details
             Alert alert = new Alert(Alert.AlertType.ERROR);
             alert.setHeaderText(null);
-            alert.setContentText("Must Have Reason for Flagging Content");
+            alert.setContentText("Must Have Reason to Complete Action");
             alert.showAndWait();
             return;
         }

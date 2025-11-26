@@ -298,7 +298,7 @@ public class ViewDiscussions {
         	    String labelText;
         	    if (isHidden && isStaffOrAdmin) {
         	        // Hidden reply visible to staff/admin (keep original behavior)
-        	        labelText = reply.getAuthorUsername() + ": " + reply.getContent() + " [Hidden by Staff/Admin]";
+        	        labelText = reply.getAuthorUsername() + ": " + reply.getContent() + " [Hidden by Staff]";
         	    } else if (isPrivate) {
         	        // Private feedback: decide whether current session can see the content
         	        boolean canSeePrivateContent = reply.isVisibleTo(currentUser);
