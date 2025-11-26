@@ -10,6 +10,7 @@ import entityClasses.Reply; // Import Reply
 import entityClasses.UserForList;
 import entityClasses.User;
 import java.time.Instant;
+import java.time.LocalDateTime;
 
 public class Database {
 
@@ -106,17 +107,31 @@ public class Database {
                 + "title VARCHAR(255), "
                 + "content VARCHAR(4096), "
                 + "thread VARCHAR(255) DEFAULT 'General', " 
+                + "visible BOOLEAN DEFAULT TRUE, " //added visibility feature
                 + "deleted BOOLEAN DEFAULT FALSE, " 
                 + "timestamp TIMESTAMP)";
         statement.execute(postsTable);
+        
+        try { statement.execute("ALTER TABLE postsDB ADD COLUMN visible BOOLEAN DEFAULT TRUE"); }
+        catch (SQLException ignore) {}
 
         String repliesTable = "CREATE TABLE IF NOT EXISTS repliesDB ("
                 + "replyID INT AUTO_INCREMENT PRIMARY KEY, "
                 + "postID INT, "
                 + "authorUsername VARCHAR(255), "
                 + "content VARCHAR(2048), "
+                + "visible BOOLEAN DEFAULT TRUE, " //added visibility feature
+                + "visibility VARCHAR(20) DEFAULT 'public', "
+                + "recipient VARCHAR(255), "
                 + "timestamp TIMESTAMP)";
         statement.execute(repliesTable);
+        
+        try { statement.execute("ALTER TABLE repliesDB ADD COLUMN visible BOOLEAN DEFAULT TRUE"); }
+        catch (SQLException ignore) {}
+        
+        try { statement.execute("ALTER TABLE repliesDB ADD COLUMN visibility VARCHAR(20) DEFAULT 'public'"); } catch (SQLException ignore) {}
+
+        try { statement.execute("ALTER TABLE repliesDB ADD COLUMN recipient VARCHAR(255)"); } catch (SQLException ignore) {}
 
         String viewedPostsTable = "CREATE TABLE IF NOT EXISTS viewed_posts ("
                 + "postID INT, "
@@ -129,8 +144,20 @@ public class Database {
                 + "username VARCHAR(255), "
                 + "PRIMARY KEY (replyID, username))";
         statement.execute(viewedRepliesTable);
-        // --- END OF NEW TABLES ---
+        
+        String moderationLogTable = "CREATE TABLE IF NOT EXISTS moderation_log ("
+                + "logID INT AUTO_INCREMENT PRIMARY KEY, "
+                + "postID INT, "
+                + "username VARCHAR(255), "
+                + "action VARCHAR(20), "
+                + "reason VARCHAR(1024), "
+                + "timestamp TIMESTAMP"
+                + ")";
+        statement.execute(moderationLogTable);
+        
     }
+    
+    
 
     /**
      * Checks if the main user table is empty.
@@ -914,36 +941,170 @@ public class Database {
      */
     public List<Post> getAllPosts(String username) {
         List<Post> posts = new ArrayList<>();
-        String sql = "SELECT p.*, " +
-                	 "v.postID IS NOT NULL AS viewed, " +
-                	 "(SELECT COUNT(*) FROM repliesDB r WHERE r.postID = p.postID) AS replyCount, " +
-                	 "(SELECT COUNT(*) FROM repliesDB r LEFT JOIN viewed_replies vr ON r.replyID = vr.replyID AND vr.username = ? WHERE r.postID = p.postID AND vr.replyID IS NULL) AS unreadReplyCount " +
-                	 "FROM postsDB p " +
-                	 "LEFT JOIN viewed_posts v ON p.postID = v.postID AND v.username = ? " +
-                	 "ORDER BY p.timestamp DESC";
+        boolean viewerIsStaff = false;
+        try { viewerIsStaff = isUserStaff(username); } catch (Exception ignored) {}
+
+        // If viewer is staff, counts include all replies. Otherwise restrict to replies.
+        String replyCountSubquery;
+        String unreadCountSubquery;
+
+        if (viewerIsStaff) {
+            replyCountSubquery = "(SELECT COUNT(*) FROM repliesDB r WHERE r.postID = p.postID)";
+            unreadCountSubquery = "(SELECT COUNT(*) FROM repliesDB r LEFT JOIN viewed_replies vr ON r.replyID = vr.replyID AND vr.username = ? WHERE r.postID = p.postID AND vr.replyID IS NULL)";
+        } else {
+            replyCountSubquery =
+                "(SELECT COUNT(*) FROM repliesDB r WHERE r.postID = p.postID AND " +
+                " (r.visibility = 'public' OR (r.visibility = 'private' AND r.recipient = ?) OR r.authorUsername = ?) )";
+
+            unreadCountSubquery =
+                "(SELECT COUNT(*) FROM repliesDB r LEFT JOIN viewed_replies vr ON r.replyID = vr.replyID AND vr.username = ? " +
+                " WHERE r.postID = p.postID AND vr.replyID IS NULL AND " +
+                " (r.visibility = 'public' OR (r.visibility = 'private' AND r.recipient = ?) OR r.authorUsername = ?) )";
+        }
+        
+        String sql = "SELECT p.*, (v.postID IS NOT NULL) AS viewed, " +
+                replyCountSubquery + " AS replyCount, " +
+                unreadCountSubquery + " AS unreadReplyCount " +
+                "FROM postsDB p " +
+                "LEFT JOIN viewed_posts v ON p.postID = v.postID AND v.username = ? " +
+                "ORDER BY p.timestamp DESC";
+
+   try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+       int idx = 1;
+       if (viewerIsStaff) {
+           // unreadCount vr.username
+           pstmt.setString(idx++, username);
+           // join v.username
+           pstmt.setString(idx++, username);
+       } else {
+           // replyCount: recipient, author
+           pstmt.setString(idx++, username); // for (r.recipient = ?)
+           pstmt.setString(idx++, username); // for r.authorUsername = ?
+           // unreadCount: vr.username, recipient, author
+           pstmt.setString(idx++, username); // vr.username
+           pstmt.setString(idx++, username); // recipient
+           pstmt.setString(idx++, username); // author
+           // join v.username
+           pstmt.setString(idx++, username);
+       }
+
+       ResultSet rs = pstmt.executeQuery();
+       while (rs.next()) {
+           int postID = rs.getInt("postID");
+           String author = rs.getString("authorUsername");
+           String title = rs.getString("title");
+           String content = rs.getString("content");
+           String thread = rs.getString("thread");
+           boolean deleted = rs.getBoolean("deleted");
+           boolean viewed = rs.getBoolean("viewed");
+           int replyCount = rs.getInt("replyCount");
+           int unreadReplyCount = rs.getInt("unreadReplyCount");
+
+           // read legacy 'visible' flag if present; default true when missing
+           boolean visible = true;
+           try {
+               visible = rs.getBoolean("visible");
+           } catch (SQLException ignore) {
+               // column missing in older DB schema -> assume visible
+           }
+
+           // fetch most recent moderation action for this post (if any)
+           String actionUser = null;
+           String actionReason = null;
+           LocalDateTime actionTimestamp = null;
+           try {
+               String modSql = "SELECT username, action, reason, timestamp FROM moderation_log WHERE postID = ? ORDER BY timestamp DESC LIMIT 1";
+               try (PreparedStatement modStmt = connection.prepareStatement(modSql)) {
+                   modStmt.setInt(1, postID);
+                   try (ResultSet mrs = modStmt.executeQuery()) {
+                       if (mrs.next()) {
+                           actionUser = mrs.getString("username");
+                           actionReason = mrs.getString("reason");
+                           Timestamp t = mrs.getTimestamp("timestamp");
+                           if (t != null) actionTimestamp = t.toLocalDateTime();
+                       }
+                   }
+               }
+           } catch (SQLException ignore) {
+               // moderation_log might not exist on some DBs - that's fine
+           }
+
+           // Construct Post. Use the constructor that includes moderation metadata and visibility.
+           Post post = new Post(
+               postID,
+               author,
+               title,
+               content,
+               thread,
+               deleted,
+               viewed,
+               replyCount,
+               unreadReplyCount,
+               visible,
+               actionUser,
+               actionReason,
+               actionTimestamp
+           );
+	
+	           posts.add(post);
+	       }
+	   } catch (SQLException e) {
+	       e.printStackTrace();
+	   }
+	   return posts;
+	}
+
+    
+    /*****
+     * <p> Method: String getPostAuthor(int postID) </p>
+     * 
+     * <p> Description: This method retrieves the author’s username for a specific post using the
+     * post ID. If the post does not exist or an SQL exception occurs, the method returns null. </p>
+     * 
+     * @param postID The unique identifier for the post whose author's username is to be retrieved.
+     * 
+     * @return A String with the author’s username for the given postID
+     */
+    public String getPostAuthor(int postID) {
+        String sql = "SELECT authorUsername FROM postsDB WHERE postID = ?";
         try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
-            pstmt.setString(1, username);
-            pstmt.setString(2, username);
+            pstmt.setInt(1, postID);
             ResultSet rs = pstmt.executeQuery();
-            while (rs.next()) {
-                int postID = rs.getInt("postID");
-                String author = rs.getString("authorUsername");
-                String title = rs.getString("title");
-                String content = rs.getString("content");
-                String thread = rs.getString("thread");
-                boolean deleted = rs.getBoolean("deleted");
-                boolean viewed = rs.getBoolean("viewed");
-                int replyCount = rs.getInt("replyCount");
-                int unreadReplyCount = rs.getInt("unreadReplyCount");
-                Post post = new Post(postID, author, title, content, thread, deleted, viewed, replyCount, unreadReplyCount);
-                posts.add(post);
+            if (rs.next()) {
+                return rs.getString("authorUsername");
             }
         } catch (SQLException e) {
             e.printStackTrace();
         }
-        return posts;
+        return null;
     }
-
+    
+    /*****
+     * <p> Method: boolean isUserStaff(String username) </p>
+     * 
+     * <p> Description: This method checks whether a specified user has been assigned the staff role.
+     * This allows the system to verify a user’s authorization level
+     * when performing staff-specific actions. </p>
+     * 
+     * @param username The username of the user whose staff role status is to be checked.
+     * 
+     * @return A boolean value indicating whether the user has a staff role (TRUE if staff, FALSE otherwise).
+     */
+    public boolean isUserStaff(String username) {
+        String sql = "SELECT newStaff FROM userDB WHERE userName = ?";
+        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+            pstmt.setString(1, username);
+            ResultSet rs = pstmt.executeQuery();
+            if (rs.next()) {
+                return rs.getBoolean("newStaff");
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+    
+    
     /**
      * Searches for posts based on a keyword and an optional thread, excluding "soft deleted" posts.
      * @param keyword The keyword to search for in post titles and content.
@@ -953,48 +1114,129 @@ public class Database {
      */
     public List<Post> searchPosts(String keyword, String thread, String username) {
         List<Post> posts = new ArrayList<>();
-        String sql = "SELECT p.*, " +
-                	 "v.postID IS NOT NULL AS viewed, " +
-                	  "(SELECT COUNT(*) FROM repliesDB r WHERE r.postID = p.postID) AS replyCount, " +
-                	  "(SELECT COUNT(*) FROM repliesDB r LEFT JOIN viewed_replies vr ON r.replyID = vr.replyID AND vr.username = ? WHERE r.postID = p.postID AND vr.replyID IS NULL) AS unreadReplyCount " +
-                	  "FROM postsDB p " +
-                	  "LEFT JOIN viewed_posts v ON p.postID = v.postID AND v.username = ? " +
-                	  "WHERE (LOWER(p.title) LIKE LOWER(?) OR LOWER(p.content) LIKE LOWER(?))";
+        boolean viewerIsStaff = false;
+        try { 
+            viewerIsStaff = isUserStaff(username); 
+        } catch (Exception ignored) {}
+
+        String replyCountSubquery;
+        String unreadCountSubquery;
+
+        if (viewerIsStaff) {
+            replyCountSubquery = "(SELECT COUNT(*) FROM repliesDB r WHERE r.postID = p.postID)";
+            unreadCountSubquery =
+                "(SELECT COUNT(*) FROM repliesDB r LEFT JOIN viewed_replies vr " +
+                "ON r.replyID = vr.replyID AND vr.username = ? " +
+                "WHERE r.postID = p.postID AND vr.replyID IS NULL)";
+        } else {
+            replyCountSubquery =
+                "(SELECT COUNT(*) FROM repliesDB r WHERE r.postID = p.postID AND " +
+                "((r.visible = TRUE) OR r.visibility = 'public' OR (r.visibility = 'private' AND r.recipient = ?) OR r.authorUsername = ?) )";
+
+            unreadCountSubquery =
+                "(SELECT COUNT(*) FROM repliesDB r LEFT JOIN viewed_replies vr " +
+                "ON r.replyID = vr.replyID AND vr.username = ? " +
+                "WHERE r.postID = p.postID AND vr.replyID IS NULL AND " +
+                "((r.visible = TRUE) OR r.visibility = 'public' OR (r.visibility = 'private' AND r.recipient = ?) OR r.authorUsername = ?) )";
+        }
+
+        String sql = "SELECT p.*, (v.postID IS NOT NULL) AS viewed, " +
+                     replyCountSubquery + " AS replyCount, " +
+                     unreadCountSubquery + " AS unreadReplyCount " +
+                     "FROM postsDB p " +
+                     "LEFT JOIN viewed_posts v ON p.postID = v.postID AND v.username = ? " +
+                     "WHERE (LOWER(p.title) LIKE LOWER(?) OR LOWER(p.content) LIKE LOWER(?))";
+
         if (!"All Threads".equals(thread)) {
             sql += " AND p.thread = ?";
         }
+
         sql += " ORDER BY p.timestamp DESC";
 
         try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
             String searchKeyword = "%" + keyword + "%";
-            int paramIndex = 1;
-            pstmt.setString(paramIndex++, username);
-            pstmt.setString(paramIndex++, username);
-            pstmt.setString(paramIndex++, searchKeyword);
-            pstmt.setString(paramIndex++, searchKeyword);
-            if (!"All Threads".equals(thread)) {
-                pstmt.setString(paramIndex++, thread);
+            int idx = 1;
+
+            if (viewerIsStaff) {
+                // unreadCount vr.username
+                pstmt.setString(idx++, username);
+                // join v.username
+                pstmt.setString(idx++, username);
+            } else {
+                // replyCount: recipient, author
+                pstmt.setString(idx++, username); // for (r.recipient = ?)
+                pstmt.setString(idx++, username); // for r.authorUsername = ?
+                // unreadCount: vr.username, recipient, author
+                pstmt.setString(idx++, username); // vr.username
+                pstmt.setString(idx++, username); // recipient
+                pstmt.setString(idx++, username); // author
+                // join v.username
+                pstmt.setString(idx++, username);
             }
 
-            ResultSet rs = pstmt.executeQuery();
-            while (rs.next()) {
-                int postID = rs.getInt("postID");
-                String author = rs.getString("authorUsername");
-                String title = rs.getString("title");
-                String content = rs.getString("content");
-                String postThread = rs.getString("thread");
-                boolean deleted = rs.getBoolean("deleted");
-                boolean viewed = rs.getBoolean("viewed");
-                int replyCount = rs.getInt("replyCount");
-                int unreadReplyCount = rs.getInt("unreadReplyCount");
-                Post post = new Post(postID, author, title, content, postThread, deleted, viewed, replyCount, unreadReplyCount);
-                posts.add(post);
+            // keyword and optional thread filters
+            pstmt.setString(idx++, searchKeyword);
+            pstmt.setString(idx++, searchKeyword);
+            if (!"All Threads".equals(thread)) {
+                pstmt.setString(idx++, thread);
+            }
+
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    int postID = rs.getInt("postID");
+                    String author = rs.getString("authorUsername");
+                    String title = rs.getString("title");
+                    String content = rs.getString("content");
+                    String postThread = rs.getString("thread");
+                    boolean deleted = rs.getBoolean("deleted");
+                    boolean viewed = rs.getBoolean("viewed");
+                    int replyCount = rs.getInt("replyCount");
+                    int unreadReplyCount = rs.getInt("unreadReplyCount");
+
+                    // pull visibility like in getAllPosts (safe for older DBs)
+                    boolean visible = true;
+                    try {
+                        visible = rs.getBoolean("visible");
+                    } catch (SQLException ignore) {
+                        // Column might not exist in an older DB; default to visible
+                    }
+
+                    // fetch most recent moderation action for this post (if any)
+                    String actionUser = null;
+                    String actionReason = null;
+                    LocalDateTime actionTimestamp = null;
+                    try {
+                        String modSql = "SELECT username, action, reason, timestamp FROM moderation_log WHERE postID = ? ORDER BY timestamp DESC LIMIT 1";
+                        try (PreparedStatement modStmt = connection.prepareStatement(modSql)) {
+                            modStmt.setInt(1, postID);
+                            try (ResultSet mrs = modStmt.executeQuery()) {
+                                if (mrs.next()) {
+                                    actionUser = mrs.getString("username");
+                                    actionReason = mrs.getString("reason");
+                                    Timestamp t = mrs.getTimestamp("timestamp");
+                                    if (t != null) actionTimestamp = t.toLocalDateTime();
+                                }
+                            }
+                        }
+                    } catch (SQLException ignore) {
+                        // moderation_log might not exist on some DBs
+                    }
+
+                    Post post = new Post(
+                        postID, author, title, content, postThread,
+                        deleted, viewed, replyCount, unreadReplyCount,
+                        visible, actionUser, actionReason, actionTimestamp
+                    );
+                    posts.add(post);
+                }
             }
         } catch (SQLException e) {
             e.printStackTrace();
         }
+
         return posts;
     }
+
 
     /**
      * Updates an existing post in the database.
@@ -1045,6 +1287,57 @@ public class Database {
             e.printStackTrace();
         }
     }
+    
+    
+    
+    // Moderation and Visibility Control for Posts
+    
+    /**
+     * Hides post so that only authorized users can see it.
+     * @param postID The ID of the post that needs to be fetched.
+     * @param username username of who is hiding the post.
+     * @param reason The reason why the post is being hidden.
+     */
+    public void hidePost(int postID, String username, String reason) {
+        String sql = "UPDATE postsDB SET visible = FALSE WHERE postID = ?";
+        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+            pstmt.setInt(1, postID);
+            pstmt.executeUpdate();
+            logModerationAction(postID, username, "HIDE_POST", reason);
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+    
+    /**
+     * Unhides post so that only authorized users can see it.
+     * @param postID The ID of the post that needs to be fetched.
+     * @param username username of who is hiding the post.
+     * @param reason The reason why the post is being hidden.
+     */
+    public void unhidePost(int postID, String username, String reason) {
+        String sql = "UPDATE postsDB SET visible = TRUE WHERE postID = ?";
+        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+            pstmt.setInt(1, postID);
+            pstmt.executeUpdate();
+            logModerationAction(postID, username, "UNHIDE_POST", reason);
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+    
+    /**
+     * Flags post and logs it.
+     * @param postID The ID of the post that needs to be fetched.
+     * @param username username of who is hiding the post.
+     * @param reason The reason why the post is being hidden.
+     */
+    public void flagPost(int postID, String username, String reason) {
+        // This does not change visibility, but just records the issue
+        logModerationAction(postID, username, "FLAG_POST", reason);
+    }
+    
+    
 
     // --- NEW DATABASE METHODS FOR REPLIES (CRUD) ---
 
@@ -1052,20 +1345,22 @@ public class Database {
      * Creates a new reply in the database.
      * @param reply The Reply object to be created.
      */
-    /*
-    public void createReply(Reply reply) {
-        String sql = "INSERT INTO repliesDB (postID, authorUsername, content, timestamp) VALUES (?, ?, ?, ?)";
+    public boolean createReply(Reply reply) {
+        String sql = "INSERT INTO repliesDB (postID, authorUsername, content, visibility, recipient, timestamp) VALUES (?, ?, ?, ?, ?, ?)";
         try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
             pstmt.setInt(1, reply.getPostID());
             pstmt.setString(2, reply.getAuthorUsername());
             pstmt.setString(3, reply.getContent());
-            pstmt.setTimestamp(4, Timestamp.from(Instant.now()));
+            pstmt.setString(4, reply.getVisibility() == null ? "public" : reply.getVisibility());
+            pstmt.setString(5, reply.getPostAuthorUsername()); // recipient (may be null)
+            pstmt.setTimestamp(6, Timestamp.from(Instant.now()));
             pstmt.executeUpdate();
+            return true;
         } catch (SQLException e) {
             e.printStackTrace();
+            return false;
         }
     }
-    */
 
     /**
      * Retrieves all replies for a specific post.
@@ -1074,9 +1369,9 @@ public class Database {
      */
     public List<Reply> getRepliesForPost(int postID, String username) {
         List<Reply> replies = new ArrayList<>();
-        String sql = "SELECT r.*, vr.replyID IS NOT NULL AS viewed FROM repliesDB r " +
-                     "LEFT JOIN viewed_replies vr ON r.replyID = vr.replyID AND vr.username = ? " +
-                     "WHERE r.postID = ? ORDER BY r.timestamp ASC";
+        String sql = "SELECT r.*, vr.replyID IS NOT NULL AS viewed FROM repliesDB r "
+                   + "LEFT JOIN viewed_replies vr ON r.replyID = vr.replyID AND vr.username = ? "
+                   + "WHERE r.postID = ? ORDER BY r.timestamp ASC";
         try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
             pstmt.setString(1, username);
             pstmt.setInt(2, postID);
@@ -1086,7 +1381,36 @@ public class Database {
                 String author = rs.getString("authorUsername");
                 String content = rs.getString("content");
                 boolean viewed = rs.getBoolean("viewed");
-                Reply reply = new Reply(replyID, postID, author, content);
+
+                // Legacy 'visible' boolean (may not exist)
+                boolean visible = true;
+                try {
+                    visible = rs.getBoolean("visible");
+                } catch (SQLException ignore) {
+                    // Older DB: assume visible
+                }
+
+                // Newer visibility/recipient model (may not exist)
+                String visibility = null;
+                String recipient = null;
+                try { visibility = rs.getString("visibility"); } catch (SQLException ignore) {}
+                try { recipient = rs.getString("recipient"); } catch (SQLException ignore) {}
+
+                // Keep moderation metadata null (same as original A)
+                String actionUser = null;
+                String actionReason = null;
+                LocalDateTime actionTimestamp = null;
+
+                Reply reply;
+                if ("private".equalsIgnoreCase(visibility)) {
+                    // Use the private-reply constructor from original B
+                    reply = new Reply(replyID, postID, author, content, "private", recipient);
+                } else {
+                    // Use the legacy constructor from original A (visible + null moderation metadata)
+                    reply = new Reply(replyID, postID, author, content,
+                                      visible, actionUser, actionReason, actionTimestamp);
+                }
+
                 reply.setViewed(viewed);
                 replies.add(reply);
             }
@@ -1095,6 +1419,7 @@ public class Database {
         }
         return replies;
     }
+
 
     /**
      * Updates an existing reply in the database.
@@ -1143,5 +1468,117 @@ public class Database {
         } catch (SQLException e) {
             e.printStackTrace();
         }
+    }
+    
+    
+    // Moderation and Visibility Control for Posts
+    
+    /**
+     * Hides reply so that only authorized users can see it.
+     * @param replyID The ID of the reply
+     * @param postID The ID of the post whose replies needs to be fetched.
+     * @param username The username of who is hiding the post.
+     * @param reason The reason why the post is being hidden.
+     */
+    public void hideReply(int replyID, int postID, String username, String reason) {
+        String sql = "UPDATE repliesDB SET visible = FALSE WHERE replyID = ?";
+        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+            pstmt.setInt(1, replyID);
+            pstmt.executeUpdate();
+            logModerationAction(postID, username, "HIDE_REPLY", reason);
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+    
+    /**
+     * Unhides reply so that only authorized users can see it.
+     * @param replyID The ID of the reply
+     * @param postID The ID of the post whose replies needs to be fetched.
+     * @param username The username of who is hiding the post.
+     * @param reason The reason why the post is being hidden.
+     */
+    public void unhideReply(int replyID, int postID, String username, String reason) {
+        String sql = "UPDATE repliesDB SET visible = TRUE WHERE replyID = ?";
+        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+            pstmt.setInt(1, replyID);
+            pstmt.executeUpdate();
+            logModerationAction(postID, username, "UNHIDE_REPLY", reason);
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * Flags reply and logs moderation.
+     * @param replyID The ID of the reply
+     * @param postID The ID of the post whose replies needs to be fetched.
+     * @param username The username of who is hiding the post.
+     * @param reason The reason why the post is being hidden.
+     */
+    public void flagReply(int replyID, int postID, String username, String reason) {
+        logModerationAction(postID, username, "FLAG_REPLY", reason);
+    }
+    
+    
+    
+    // OLD - Will be deleted soon
+    /**
+     * Logs a moderation action performed on a post.
+     *
+     * Each log entry stores who did it, what they did, why they did it, and when it happened.
+     *
+     * @param postID   The ID of the post being modified.
+     * @param username The username performing the action.
+     * @param action   The action type, e.g. "HIDE" or "UNHIDE".
+     * @param reason   The reason for the action (may be null for UNHIDE).
+     */
+    public void logPostVisibilityAction(int postID, String username, String action, String reason) {
+        String sql = "INSERT INTO moderation_log "
+                   + "(postID, username, action, reason, timestamp) "
+                   + "VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)";
+        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+            pstmt.setInt(1, postID);
+            pstmt.setString(2, username);
+            pstmt.setString(3, action);
+            pstmt.setString(4, reason);
+            pstmt.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+    
+    // NEW
+    /**
+     * <p> Method: void logModerationAction(int postID, String username, String action, String reason) </p>
+     * 
+     * <p> Description: Writes a row to the moderation_log table to track moderation outcomes. </p>
+     */
+    private void logModerationAction(int postID, String username, String action, String reason) {
+        String sql = "INSERT INTO moderation_log (postID, username, action, reason, timestamp) "
+                   + "VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)";
+        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+            pstmt.setInt(1, postID);
+            pstmt.setString(2, username);
+            pstmt.setString(3, action);
+            pstmt.setString(4, reason);
+            pstmt.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    
+    // For Testing Purposes Only
+    
+    // Declares 3 types of roles
+    public enum Role { ADMIN, STUDENT, STAFF }
+
+    public java.util.EnumSet<Role> getRoles(entityClasses.User user) {
+        java.util.EnumSet<Role> roles = java.util.EnumSet.noneOf(Role.class);
+        if (loginAdmin(user))   roles.add(Role.ADMIN);
+        if (loginStudent(user)) roles.add(Role.STUDENT);
+        if (loginStaff(user))   roles.add(Role.STAFF);
+        return roles;
     }
 }

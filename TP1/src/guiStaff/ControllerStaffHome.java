@@ -12,6 +12,12 @@ public class ControllerStaffHome {
 		guiUserUpdate.ViewUserUpdate.displayUserUpdate(ViewStaffHome.theStage, ViewStaffHome.theUser);
 	}	
 
+	  public static void goToDiscussions() {
+	        guiDiscussions.ViewDiscussions.displayDiscussions(
+	                ViewStaffHome.theStage,
+	                ViewStaffHome.theUser
+	        );
+	    }
 	
 	protected static void performLogout() {
 		guiUserLogin.ViewUserLogin.displayUserLogin(ViewStaffHome.theStage);

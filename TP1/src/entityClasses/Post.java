@@ -2,6 +2,7 @@
 package entityClasses;
 
 import java.time.LocalDateTime;
+import java.util.EnumSet;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -14,9 +15,9 @@ import java.util.List;
  *
  * <p> Copyright: Lynn Robert Carter © 2025 </p>
  *
- * @author Kushal Gadamsetty
- *
- * @version 1.04    2025-10-20 Added reply counts
+ * @author Neha Kanjamala
+ * 
+ * @version 1.04    2025-11-11 Added visibility/moderation
  */
 public class Post {
 
@@ -32,9 +33,18 @@ public class Post {
     private int unreadReplyCount; // Added unreadReplyCount attribute for unreadReplyCount method
     private LocalDateTime timestamp; // identify when post was posted
     private List<Reply> replies; //to identify the replies attached to a post
+    
+
+    // NEW: Visibility and log details
+
+    private boolean visible = true;       // true = visible to students
+    private String actionUser;            // who performed the moderation action
+    private String actionReason;          // why the action occurred
+    private LocalDateTime actionTimestamp; // when the action occurred
+
 
     /**
-     * <p> Method: Post(int postID, String authorUsername, String title, String content, 
+     * <p> Constuctor: Post(int postID, String authorUsername, String title, String content, 
      * String thread, boolean deleted, boolean viewed, int replyCount, int unreadReplyCount)</p>
      * 
      * <p> Description: This constructor is used to create post entity objects. </p>
@@ -71,6 +81,39 @@ public class Post {
         this.timestamp = LocalDateTime.now(); // Set the timestamp to the current time
         this.replies = new ArrayList<>();
     }
+    
+    
+    /**Post(int postID, String authorUsername, String title, String content, String thread,
+     *           boolean deleted, boolean viewed, int replyCount, int unreadReplyCount,
+     *           boolean visible, String actionUser, String actionReason, LocalDateTime actionTimestamp) </p>
+     *
+     * <p> Description: Adds moderation/visibility control fields. </p>
+     * 
+     * @param postID           The unique identifier for the post
+     * @param authorUsername   The username of the author
+     * @param title            The title of the post
+     * @param content          The post content
+     * @param thread           The thread this post belongs to
+     * @param deleted          Whether the post is deleted
+     * @param viewed           Whether the post has been viewed
+     * @param replyCount       Number of replies
+     * @param unreadReplyCount Number of unread replies
+     * @param visible          Whether the post is visible to students
+     * @param actionUser       The user who performed the moderation action
+     * @param actionReason     The reason or description of the action
+     * @param actionTimestamp  The time when the action occurred
+     */
+    public Post(int postID, String authorUsername, String title, String content, String thread,
+                boolean deleted, boolean viewed, int replyCount, int unreadReplyCount,
+                boolean visible, String actionUser, String actionReason, LocalDateTime actionTimestamp) {
+
+        this(postID, authorUsername, title, content, thread, deleted, viewed, replyCount, unreadReplyCount);
+        this.visible = visible;
+        this.actionUser = actionUser;
+        this.actionReason = actionReason;
+        this.actionTimestamp = actionTimestamp;
+
+    }
 
     // Getters
     /*****
@@ -96,7 +139,7 @@ public class Post {
     public String getAuthorUsername() { return authorUsername; }
     
     /*****
-     * <p> Method: String getTitle()) </p>
+     * <p> Method: String getTitle() </p>
      * 
      * <p> Description: This getter returns the post's title.It implements read in the CRUD functionalities.  </p>
      * 
@@ -107,7 +150,7 @@ public class Post {
     public String getTitle() { return title; }
     
     /*****
-     * <p> Method: String getContent()) </p>
+     * <p> Method: String getContent() </p>
      * 
      * <p> Description: This getter returns the post's content. It implements read in the CRUD functionalities. </p>
      * 
@@ -129,7 +172,7 @@ public class Post {
     public String getThread() { return thread; } 
     
     /*****
-     * <p> Method: boolean isDeleted()) </p>
+     * <p> Method: boolean isDeleted() </p>
      * 
      * <p> Description: This getter returns the post's deleted attribute. It implements delete in the CRUD functionalities. </p>
      * 
@@ -140,7 +183,7 @@ public class Post {
     public boolean isDeleted() { return deleted; } 
     
     /*****
-     * <p> Method: boolean isViewed()) </p>
+     * <p> Method: boolean isViewed() </p>
      * 
      * <p> Description: This getter returns the post's viewed attribute. It implements read in the CRUD functionalities. </p>
      * 
@@ -151,7 +194,7 @@ public class Post {
     public boolean isViewed() { return viewed; } 
     
     /*****
-     * <p> Method: String getReplyCount()) </p>
+     * <p> Method: int getReplyCount() </p>
      * 
      * <p> Description: This getter returns the post's reply count. It implements read in the CRUD functionalities. </p>
      * 
@@ -162,7 +205,7 @@ public class Post {
     public int getReplyCount() { return replyCount; } // Added getter for replyCount
     
     /*****
-     * <p> Method: String getUnreadReplyCount()) </p>
+     * <p> Method: int getUnreadReplyCount() </p>
      * 
      * <p> Description: This getter returns the post's unread reply count. It implements read in the CRUD functionalities. </p>
      * 
@@ -173,7 +216,7 @@ public class Post {
     public int getUnreadReplyCount() { return unreadReplyCount; } // Added getter for unreadReplyCount
     
     /*****
-     * <p> Method: LocalDateTime getTimestamp()) </p>
+     * <p> Method: LocalDateTime getTimestamp() </p>
      * 
      * <p> Description: This getter returns the post's timestamp. It implements read in the CRUD functionalities. </p>
      * 
@@ -184,7 +227,7 @@ public class Post {
     public LocalDateTime getTimestamp() { return timestamp; }
     
     /*****
-     * <p> Method: List<Reply> getReplies()) </p>
+     * <p> Method: List<Reply> getReplies() </p>
      * 
      * <p> Description: This getter returns a list of replies. It implements read in the CRUD functionalities. </p>
      * 
@@ -193,6 +236,45 @@ public class Post {
      */
     // Gets the list of replies.
     public List<Reply> getReplies() { return replies; }
+    
+    
+    // NEW: Getters for moderation fields
+    /*****
+     * <p> Method: boolean isVisible() </p>
+     * 
+     * <p> Description: This getter returns if the post is visible to students. </p>
+     * 
+     * @return a boolean if the post is visible.
+     * 
+     */
+    public boolean isVisible() { return visible; }
+    
+    /*****
+     * <p> Method: String getActionUser() </p>
+     * 
+     * <p> Description: This getter returns the user doing the action to the post. </p>
+     * 
+     * @return a string with the user's username.
+     */
+    public String getActionUser() { return actionUser; }
+    
+    /*****
+     * <p> Method: String getActionReason() </p>
+     * 
+     * <p> Description: This getter returns the reason the user is doing the action to the post. </p>
+     * 
+     * @return a a string with the user's reason.
+     */
+    public String getActionReason() { return actionReason; }
+    
+    /*****
+     * <p> Method: LocalDateTime getActionTimestamp() </p>
+     * 
+     * <p> Description: This getter returns the time of the action. </p>
+     * 
+     * @return a LocalDateTime of the time of the action.
+     */
+    public LocalDateTime getActionTimestamp() { return actionTimestamp; }
 
     
     // Setters
@@ -251,6 +333,55 @@ public class Post {
      */
     // Sets if post was viewed.
     public void setViewed(boolean viewed) { this.viewed = viewed; } 
+    
+ // Sets the replyCount (used by controller to recalc per-session counts)
+    public void setReplyCount(int replyCount) { this.replyCount = replyCount; }
+
+    // Sets the unreadReplyCount (used by controller to recalc per-session counts)
+    public void setUnreadReplyCount(int unreadReplyCount) { this.unreadReplyCount = unreadReplyCount; }
+
+    
+    // NEW: Setters for moderation fields
+    /*****
+     * <p> Method: void setVisible(boolean visible) </p>
+     * 
+     * <p> Description: This setter defines the Post visible attribute. </p>
+     * 
+     * @param visible is a boolean that specifies if the post is visible.
+     * 
+     */
+    public void setVisible(boolean visible) { this.visible = visible; }
+    
+    /*****
+     * <p> Method: void setActionUser(String actionUser) </p>
+     * 
+     * <p> Description: This setter defines the actionUser attribute. </p>
+     * 
+     * @param actionUser is a string that specifies the actionUser attribute.
+     * 
+     */
+    public void setActionUser(String actionUser) { this.actionUser = actionUser; }
+    
+    /*****
+     * <p> Method: void setActionReason(String actionReason) </p>
+     * 
+     * <p> Description: This setter defines the actionReason attribute. </p>
+     * 
+     * @param actionReason is a string that specifies the actionReason attribute.
+     * 
+     */
+    public void setActionReason(String actionReason) { this.actionReason = actionReason; }
+    
+    /*****
+     * <p> Method: void setActionTimestamp(LocalDateTime actionTimestamp) </p>
+     * 
+     * <p> Description: This setter defines the actionTimestamp attribute. </p>
+     * 
+     * @param actionTimestamp is a LocalDateTime that specifies the actionTimestamp attribute.
+     * 
+     */
+    public void setActionTimestamp(LocalDateTime actionTimestamp) { this.actionTimestamp = actionTimestamp; }
+
 
     /**
      * <p> Method: void addReply(Reply reply) </p>
@@ -272,5 +403,29 @@ public class Post {
     @Override
     public String toString() {
         return String.format("%s (%s) - Replies: %d (Unread: %d)", title, thread, replyCount, unreadReplyCount);
+    }
+    
+    /*****
+     * <p> Method: String getDisplayContent(Post post, EnumSet&lt;database.Database.Role&gt; roles) </p>
+     * 
+     * <p> Description: This static method determines what content should be displayed for a given post 
+     * based on its visibility and the role of the user viewing it. If the post is visible, the full 
+     * content is returned. If the post is hidden, the method checks the user's role—students will see 
+     * “Content Not Available,” while staff and administrators will see the original content appended 
+     * with “(Hidden by Staff)”. </p>
+     * 
+     * @param post   The Post object whose content visibility is being evaluated.
+     * 
+     * @param roles  The set of user roles associated with the currently logged-in user.
+     * 
+     * @return A String representing the appropriate content that should be displayed to the user.
+     */
+    public static String getDisplayContent(Post post, EnumSet<database.Database.Role> roles) {
+        if (post.isVisible()) return post.getContent();
+        // If user is a staff or admin, they have authorization to view hidden content
+        boolean canSeeHidden = roles.contains(database.Database.Role.ADMIN) || roles.contains(database.Database.Role.STAFF);
+        // If the user has proper role permissions, they will see a label of "Hidden by Staff" 
+        // Otherwise, the error message "Content Not Available" will be seen
+        return canSeeHidden ? post.getContent() + " (Hidden by Staff)" : "Content Not Available";
     }
 }

@@ -14,6 +14,7 @@ import javafx.scene.control.ChoiceDialog;
 import javafx.scene.control.DialogPane;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextInputDialog;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
@@ -36,25 +37,71 @@ public class ControllerDiscussions {
 
 	// variable for database
     private static Database theDatabase = applicationMain.FoundationsMain.database;
+    
+    /*****
+     * <p> Method: boolean isCurrentUserStudent() </p>
+     * 
+     * <p> Description: Check if User is a student. </p>
+     * 
+     */
+    private static boolean isCurrentUserStudent() {
+        return applicationMain.FoundationsMain.activeHomePage == 2;
+    }
+
+    /*****
+     * <p> Method: boolean isCurrentUserStaffOrAdmin() </p>
+     * 
+     * <p> Description: Check if User is a staff or admin (authorized users). </p>
+     * 
+     */
+    private static boolean isCurrentUserStaffOrAdmin() {
+    	int role = applicationMain.FoundationsMain.activeHomePage;
+        return (role == 1 || role == 3);
+    }
 
     /*****
      * <p> Method: void initializeView() </p>
      * 
-     * <p> Description: Initializes the view by loading all posts from the database into the ListView.. </p>
+     * <p> Description: Initializes the view by loading all posts from the database into the ListView. </p>
      * 
      */
     protected static void initializeView() {
     	// loads all the posts
         List<Post> posts = theDatabase.getAllPosts(ViewDiscussions.theUser.getUserName());
+        List<Post> adjustedPosts = new ArrayList<>();
+        
+        // Students should only see visible posts
+        if (isCurrentUserStudent()) {
+            posts = posts.stream()
+                    .filter(Post::isVisible)
+                    .collect(Collectors.toList());
+        }
+
+        for (Post p : posts) {
+            // fetch all replies then filter by session visibility
+            List<Reply> allReplies = theDatabase.getRepliesForPost(p.getPostID(), ViewDiscussions.theUser.getUserName());
+            List<Reply> visibleReplies = allReplies.stream()
+                    .filter(r -> isReplyVisibleToCurrentSession(r))
+                    .collect(java.util.stream.Collectors.toList());
+
+            int visibleReplyCount = visibleReplies.size();
+            int visibleUnreadCount = (int) visibleReplies.stream().filter(r -> !r.isViewed()).count();
+
+            // create an adjusted Post object (or modify existing) with the counts
+            // easiest: reuse p and set counts via setters we added
+            p.setReplyCount(visibleReplyCount);
+            p.setUnreadReplyCount(visibleUnreadCount);
+            adjustedPosts.add(p);
+        }
+        
         ObservableList<Post> observablePosts = FXCollections.observableArrayList(posts);
         ViewDiscussions.listView_Posts.setItems(observablePosts);
 
-        // Clear the selection and text areas
+        // Clear selection
         ViewDiscussions.listView_Posts.getSelectionModel().clearSelection();
         ViewDiscussions.textArea_PostContent.clear();
         ViewDiscussions.listView_Replies.getItems().clear();
-        
-        
+
         updatePostSummary();
         updateReplySummary();
     }
@@ -74,6 +121,14 @@ public class ControllerDiscussions {
             return;
         }
 
+        // Unauthorized access handling for students
+        if (!selectedPost.isVisible() && isCurrentUserStudent()) {
+            ViewDiscussions.textArea_PostContent.setText("Content Not Available");
+            ViewDiscussions.listView_Replies.getItems().clear();
+            // Don't mark as read since student shouldn't have access
+            return;
+        }
+        
         theDatabase.markPostAsRead(selectedPost.getPostID(), ViewDiscussions.theUser.getUserName());
         selectedPost.setViewed(true);
         ViewDiscussions.listView_Posts.refresh();
@@ -84,6 +139,18 @@ public class ControllerDiscussions {
                 "\n\ndeleted");
             // Don't clear replies - keep them displayed
             List<Reply> replies = theDatabase.getRepliesForPost(selectedPost.getPostID(), ViewDiscussions.theUser.getUserName());
+            
+            if (isCurrentUserStudent()) {
+                replies = replies.stream()
+                        .filter(Reply::isVisible)
+                        .collect(java.util.stream.Collectors.toList());
+            }
+            
+            String currentUser = ViewDiscussions.theUser.getUserName();
+	         List<Reply> visibleReplies = replies.stream()
+	                 .filter(r -> r.isVisibleTo(currentUser))
+	                 .collect(Collectors.toList());
+            
             ObservableList<Reply> observableReplies = FXCollections.observableArrayList(replies);
             ViewDiscussions.listView_Replies.setItems(observableReplies);
             updateReplySummary();
@@ -92,7 +159,14 @@ public class ControllerDiscussions {
         }
 
         // Display the post content
-        String postDetails = "Title: " + selectedPost.getTitle() + "\n" +
+        String postDetails = "";
+        
+        // label for staff/admin when post is hidden
+        if (!selectedPost.isVisible() && isCurrentUserStaffOrAdmin()) {
+            postDetails += "[Hidden by Staff/Admin]\n\n";
+        }
+        
+        postDetails += "Title: " + selectedPost.getTitle() + "\n" +
                              "Author: " + selectedPost.getAuthorUsername() + "\n" +
                              "Thread: " + selectedPost.getThread() + "\n\n" +
                              selectedPost.getContent();
@@ -100,6 +174,14 @@ public class ControllerDiscussions {
 
         // Fetch and display replies of a selected post
         List<Reply> replies = theDatabase.getRepliesForPost(selectedPost.getPostID(), ViewDiscussions.theUser.getUserName());
+        
+        // Students cannot see hidden replies
+        if (isCurrentUserStudent()) {
+            replies = replies.stream()
+                    .filter(Reply::isVisible)
+                    .collect(Collectors.toList());
+        }
+        
         ObservableList<Reply> observableReplies = FXCollections.observableArrayList(replies);
         ViewDiscussions.listView_Replies.setItems(observableReplies);
         
@@ -119,13 +201,28 @@ public class ControllerDiscussions {
         if (selectedReply != null && !selectedReply.isViewed()) {
             theDatabase.markReplyAsRead(selectedReply.getReplyID(), ViewDiscussions.theUser.getUserName());
             selectedReply.setViewed(true);
-            ViewDiscussions.listView_Replies.refresh();
+            ViewDiscussions.listView_Replies.refresh();// show a small info if this is private feedback and user can see it
+            if ("private".equalsIgnoreCase(selectedReply.getVisibility())) {
+                // append or show a small alert/label — example: append to the post content area
+                String existing = ViewDiscussions.textArea_PostContent.getText();
+                ViewDiscussions.textArea_PostContent.setText(existing + "\n\n[private feedback]");
+            }
+
             
             // By using Platform.runLater, we schedule the post list update to happen
             // after the current UI event is finished, preventing the crash.
             Platform.runLater(() -> {
                 int selectedIndex = ViewDiscussions.listView_Posts.getSelectionModel().getSelectedIndex();
+                initializeView();
                 List<Post> posts = theDatabase.getAllPosts(ViewDiscussions.theUser.getUserName());
+                
+                // Visbility filtering
+                if (isCurrentUserStudent()) {
+                    posts = posts.stream()
+                            .filter(Post::isVisible)
+                            .collect(Collectors.toList());
+                }
+                
                 ViewDiscussions.listView_Posts.setItems(FXCollections.observableArrayList(posts));
                 if (selectedIndex != -1) {
                     ViewDiscussions.listView_Posts.getSelectionModel().select(selectedIndex);
@@ -292,6 +389,23 @@ public class ControllerDiscussions {
             return;
         }
 
+        boolean isStaff = applicationMain.FoundationsMain.activeHomePage == 3;
+        String visibility = "public";
+        if (isStaff) {
+            Alert typeDialog = new Alert(Alert.AlertType.CONFIRMATION);
+            typeDialog.setTitle("Reply Type");
+            typeDialog.setHeaderText("Choose reply visibility");
+            ButtonType btnPublic  = new ButtonType("Public");
+            ButtonType btnPrivate = new ButtonType("Private feedback");
+            typeDialog.getButtonTypes().setAll(btnPublic, btnPrivate, ButtonType.CANCEL);
+
+            Optional<ButtonType> typeResult = typeDialog.showAndWait();
+            if (!typeResult.isPresent() || typeResult.get() == ButtonType.CANCEL) {
+                return;
+            }
+            visibility = (typeResult.get() == btnPrivate) ? "private" : "public";
+        }
+        
         TextInputDialog replyDialog = new TextInputDialog();
         replyDialog.setTitle("Add Reply");
         replyDialog.setHeaderText("Enter your reply for the post: " + selectedPost.getTitle());
@@ -302,8 +416,49 @@ public class ControllerDiscussions {
         if (result.isPresent() && !result.get().trim().isEmpty()) {
             String content = result.get();
             Reply newReply = new Reply(0, selectedPost.getPostID(), ViewDiscussions.theUser.getUserName(), content);
-            theDatabase.create(newReply); //change
-            postSelected(selectedPost); // This now calls updateReplySummary()
+            if ("private".equals(visibility)) {
+                newReply = new Reply(
+                    0,
+                    selectedPost.getPostID(),
+                    ViewDiscussions.theUser.getUserName(),
+                    content,
+                    "private",
+                    selectedPost.getAuthorUsername()
+                );
+            } else {
+                newReply = new Reply(
+                    0,
+                    selectedPost.getPostID(),
+                    ViewDiscussions.theUser.getUserName(),
+                    content
+                );
+            }
+
+            boolean success = theDatabase.createReply(newReply);  // see next section
+
+            if (success) {
+                postSelected(selectedPost);
+                List<Post> posts = theDatabase.getAllPosts(ViewDiscussions.theUser.getUserName());
+                ViewDiscussions.listView_Posts.setItems(FXCollections.observableArrayList(posts));
+            }
+            
+            if ("private".equals(visibility)) {
+                if (success) {
+                    Alert ok = new Alert(Alert.AlertType.INFORMATION);
+                    ok.setTitle("Private Feedback");
+                    ok.setHeaderText(null);
+                    ok.setContentText("Private feedback posted!");
+                    ok.showAndWait();
+                } else {
+                    showError("Error posting private feedback.");
+                }
+            } else if (!success) {
+                showError("Error posting reply.");
+            }
+
+            if (success) {
+                postSelected(selectedPost);  // refresh replies + summaries
+            }
         } else {
             showError("Reply content cannot be empty.");
         }
@@ -318,14 +473,34 @@ public class ControllerDiscussions {
     protected static void searchPosts() {
         String keyword = ViewDiscussions.textField_Search.getText();
         String thread = ViewDiscussions.comboBox_Threads.getValue();
+
         // Search by keyword and by keyword+thread
-        List<Post> posts = theDatabase.searchPosts(keyword, thread, ViewDiscussions.theUser.getUserName());
+        List<Post> posts = theDatabase.searchPosts(
+                keyword,
+                thread,
+                ViewDiscussions.theUser.getUserName()
+        );
+
+        // Students should not see hidden posts in search results
+        boolean isStudent = ViewDiscussions.theUser != null
+                && ViewDiscussions.theUser.getNewStudent();  // or whatever your "student" flag is
+
+        if (isStudent) {
+            posts = posts.stream()
+                    .filter(Post::isVisible)
+                    .collect(java.util.stream.Collectors.toList());
+        }
+
         ObservableList<Post> observablePosts = FXCollections.observableArrayList(posts);
         ViewDiscussions.listView_Posts.setItems(observablePosts);
+
         // Updates total/unread post counts after search filter
         updatePostSummary();
         updateReplySummary();
     }
+
+    
+    
 
     /**
      * <p> Method: void viewMyPosts() </p>
@@ -334,12 +509,19 @@ public class ControllerDiscussions {
      * 
      */
     protected static void viewMyPosts() {
-    	// Load all posts visible
+        // Load all posts visible
         List<Post> allPosts = theDatabase.getAllPosts(ViewDiscussions.theUser.getUserName());
         List<Post> myPosts = allPosts.stream()
         		//filter based on if the post's author username is the same as the current logged in user
                 .filter(post -> post.getAuthorUsername().equals(ViewDiscussions.theUser.getUserName()))
                 .collect(Collectors.toList());
+
+        if (isCurrentUserStudent()) {
+            myPosts = myPosts.stream()
+                    .filter(Post::isVisible)
+                    .collect(Collectors.toList());
+        }
+
         ObservableList<Post> observablePosts = FXCollections.observableArrayList(myPosts);
         ViewDiscussions.listView_Posts.setItems(observablePosts);
         updatePostSummary();
@@ -358,6 +540,11 @@ public class ControllerDiscussions {
         		//filter based on if the post has been read yet using the viewed attribute
                 .filter(post -> !post.isViewed())
                 .collect(Collectors.toList());
+        if (isCurrentUserStudent()) {
+            unreadPosts = unreadPosts.stream()
+                    .filter(Post::isVisible)
+                    .collect(Collectors.toList());
+        }
         ObservableList<Post> observablePosts = FXCollections.observableArrayList(unreadPosts);
         ViewDiscussions.listView_Posts.setItems(observablePosts);
         
@@ -378,16 +565,25 @@ public class ControllerDiscussions {
             return;
         }
         // Fetch all replies for the selected post
-        List<Reply> allReplies = theDatabase.getRepliesForPost(selectedPost.getPostID(), ViewDiscussions.theUser.getUserName());
-        // Filter to only include replies that have not been viewed by the current user
+        List<Reply> allReplies = theDatabase.getRepliesForPost(
+                selectedPost.getPostID(),
+                ViewDiscussions.theUser.getUserName()
+        );
+        // Only unread replies
         List<Reply> unreadReplies = allReplies.stream()
                 .filter(reply -> !reply.isViewed())
                 .collect(Collectors.toList());
-        // Update the replies ListView to display only the unread replies
+        // Students must not see hidden replies
+        if (isCurrentUserStudent()) {
+            unreadReplies = unreadReplies.stream()
+                    .filter(Reply::isVisible)
+                    .collect(Collectors.toList());
+        }
+        // Update list view to only show unread
         ObservableList<Reply> observableReplies = FXCollections.observableArrayList(unreadReplies);
         ViewDiscussions.listView_Replies.setItems(observableReplies);
-        
         updatePostSummary();
+        updateReplySummary();
     }
 
     /**
@@ -545,4 +741,162 @@ public class ControllerDiscussions {
                 currentReplies.size(), unreadCount)
         );
     }
+    
+    /**
+     * Returns true if the given reply should be visible to the current UI session role
+     * (i.e., depending on FoundationsMain.activeHomePage and the currently signed-in user).
+     */
+    private static boolean isReplyVisibleToCurrentSession(Reply r) {
+        // Roles: (as your app uses) Admin=1, Student=2, Staff=3 (adjust if different)
+        int activeRole = applicationMain.FoundationsMain.activeHomePage;
+        String currentUsername = ViewDiscussions.theUser == null ? null : ViewDiscussions.theUser.getUserName();
+
+        // Public replies are always visible
+        if ("public".equals(r.getVisibility())) return true;
+
+        // Private feedback: visible to staff only, and to the receiving student and the reply author
+        if ("private".equals(r.getVisibility())) {
+            // Staff acting session: can view all private feedback
+            if (activeRole == 3) return true;
+
+            // If the current session is the recipient student
+            if (currentUsername != null && currentUsername.equals(r.getPostAuthorUsername())) return true;
+
+            // The author of the reply (the staff user who posted it) should see their own reply
+            if (currentUsername != null && currentUsername.equals(r.getAuthorUsername())) return true;
+
+            // Otherwise hidden
+            return false;
+        }
+
+        return false;
+    }
+    
+    /**
+     * <p> Method: void toggleVisibilityForSelection()</p>
+     * 
+     * <p> Description: Implements functionality of toggle visibility (hide/unhide) for selected post/reply.</p>
+     * 
+     */
+    protected static void toggleVisibilityForSelection() {
+        if (!isCurrentUserStaffOrAdmin()) {
+            Alert alert = new Alert(Alert.AlertType.ERROR);
+            alert.setHeaderText(null);
+            alert.setContentText("You do not have permission to moderate content.");
+            alert.showAndWait();
+            return;
+        }
+
+        Reply selectedReply = ViewDiscussions.listView_Replies.getSelectionModel().getSelectedItem();
+        Post selectedPost = ViewDiscussions.listView_Posts.getSelectionModel().getSelectedItem();
+
+        if (selectedReply == null && selectedPost == null) {
+            Alert alert = new Alert(Alert.AlertType.WARNING);
+            alert.setHeaderText(null);
+            alert.setContentText("Please select a post or reply to hide/unhide.");
+            alert.showAndWait();
+            return;
+        }
+
+        // Ask for a reason (can be optional or required; ConOps suggests a reason)
+        TextInputDialog reasonDialog = new TextInputDialog();
+        reasonDialog.setTitle("Moderation Reason");
+        reasonDialog.setHeaderText("Enter the reason for this visibility change.");
+        reasonDialog.setContentText("Reason:");
+
+        Optional<String> reasonResult = reasonDialog.showAndWait();
+        String reason = reasonResult.isPresent() ? reasonResult.get().trim() : "";
+
+        if (reason.isEmpty()) {
+        }
+
+        String currentUser = ViewDiscussions.theUser.getUserName();
+
+        if (selectedReply != null) {
+            boolean currentlyVisible = selectedReply.isVisible();
+            int replyID = selectedReply.getReplyID();
+            int parentPostID = selectedReply.getPostID();
+
+            if (currentlyVisible) {
+                theDatabase.hideReply(replyID, parentPostID, currentUser, reason);
+                selectedReply.setVisible(false);
+            } else {
+                theDatabase.unhideReply(replyID, parentPostID, currentUser, reason);
+                selectedReply.setVisible(true);
+            }
+
+            ViewDiscussions.listView_Replies.refresh();
+        } else if (selectedPost != null) {
+            boolean currentlyVisible = selectedPost.isVisible();
+            int postID = selectedPost.getPostID();
+
+            if (currentlyVisible) {
+                theDatabase.hidePost(postID, currentUser, reason);
+                selectedPost.setVisible(false);
+            } else {
+                theDatabase.unhidePost(postID, currentUser, reason);
+                selectedPost.setVisible(true);
+            }
+
+            // Re-apply filtering and refresh
+            initializeView();
+        }
+    }
+    
+    /**
+     * <p> Method: void flagSelectedContent()</p>
+     * 
+     * <p> Description: Flag content with a required reason.</p>
+     * 
+     */
+    protected static void flagSelectedContent() {
+        if (!isCurrentUserStaffOrAdmin()) {
+            Alert alert = new Alert(Alert.AlertType.ERROR);
+            alert.setHeaderText(null);
+            alert.setContentText("You do not have permission to moderate content.");
+            alert.showAndWait();
+            return;
+        }
+
+        Reply selectedReply = ViewDiscussions.listView_Replies.getSelectionModel().getSelectedItem();
+        Post selectedPost = ViewDiscussions.listView_Posts.getSelectionModel().getSelectedItem();
+
+        if (selectedReply == null && selectedPost == null) {
+            Alert alert = new Alert(Alert.AlertType.WARNING);
+            alert.setHeaderText(null);
+            alert.setContentText("Please select a post or reply to flag.");
+            alert.showAndWait();
+            return;
+        }
+
+        TextInputDialog reasonDialog = new TextInputDialog();
+        reasonDialog.setTitle("Flag Content");
+        reasonDialog.setHeaderText("Provide a reason for flagging this content.");
+        reasonDialog.setContentText("Reason:");
+
+        Optional<String> reasonResult = reasonDialog.showAndWait();
+        if (!reasonResult.isPresent() || reasonResult.get().trim().isEmpty()) {
+            // REQUIRED error message from test details
+            Alert alert = new Alert(Alert.AlertType.ERROR);
+            alert.setHeaderText(null);
+            alert.setContentText("Must Have Reason for Flagging Content");
+            alert.showAndWait();
+            return;
+        }
+
+        String reason = reasonResult.get().trim();
+        String currentUser = ViewDiscussions.theUser.getUserName();
+
+        if (selectedReply != null) {
+            theDatabase.flagReply(selectedReply.getReplyID(), selectedReply.getPostID(), currentUser, reason);
+        } else if (selectedPost != null) {
+            theDatabase.flagPost(selectedPost.getPostID(), currentUser, reason);
+        }
+
+        Alert ok = new Alert(Alert.AlertType.INFORMATION);
+        ok.setHeaderText(null);
+        ok.setContentText("Content has been flagged.");
+        ok.showAndWait();
+    }
+
 }
