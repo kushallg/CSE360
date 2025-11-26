@@ -126,10 +126,6 @@ public class Database {
             statement.execute("ALTER TABLE postsDB ADD COLUMN visible BOOLEAN DEFAULT TRUE");
         } catch (SQLException ignore) {
         }
-        try {
-            statement.execute("ALTER TABLE postsDB ADD COLUMN thread VARCHAR(255) DEFAULT 'General'");
-        } catch (SQLException ignore) {
-        }
 
         String repliesTable = "CREATE TABLE IF NOT EXISTS repliesDB ("
                 + "replyID INT AUTO_INCREMENT PRIMARY KEY, "
@@ -179,37 +175,6 @@ public class Database {
                 + ")";
         statement.execute(moderationLogTable);
 
-        // Table for Admin Requests
-        String requestsTable = "CREATE TABLE IF NOT EXISTS admin_requests ("
-                + "requestID INT AUTO_INCREMENT PRIMARY KEY, "
-                + "requester VARCHAR(255), "
-                + "description VARCHAR(2048), "
-                + "status VARCHAR(50), "
-                + "adminComments VARCHAR(4096), "
-                + "created_at TIMESTAMP, "
-                + "updated_at TIMESTAMP)";
-        statement.execute(requestsTable);
-
-        // Table for Discussion Threads
-        String threadsTable = "CREATE TABLE IF NOT EXISTS discussion_threads ("
-                + "title VARCHAR(255) PRIMARY KEY, "
-                + "visible BOOLEAN DEFAULT TRUE, "
-                + "created_at TIMESTAMP)";
-        statement.execute(threadsTable);
-
-        // Seed default threads if empty
-        try {
-            ResultSet rs = statement.executeQuery("SELECT COUNT(*) FROM discussion_threads");
-            rs.next();
-            if (rs.getInt(1) == 0) {
-                statement.execute("INSERT INTO discussion_threads VALUES ('General', TRUE, CURRENT_TIMESTAMP)");
-                statement.execute("INSERT INTO discussion_threads VALUES ('Homework', TRUE, CURRENT_TIMESTAMP)");
-                statement.execute("INSERT INTO discussion_threads VALUES ('Exams', TRUE, CURRENT_TIMESTAMP)");
-            }
-        } catch (SQLException ignore) {
-        }
-
-        // --- END OF NEW TABLES ---
     }
 
     /**
@@ -1308,6 +1273,7 @@ public class Database {
                 "FROM postsDB p " +
                 "LEFT JOIN viewed_posts v ON p.postID = v.postID AND v.username = ? " +
                 "WHERE (LOWER(p.title) LIKE LOWER(?) OR LOWER(p.content) LIKE LOWER(?))";
+
         if (!"All Threads".equals(thread)) {
             sql += " AND p.thread = ?";
         }
@@ -1755,7 +1721,7 @@ public class Database {
     /**
      * <p>
      * Method: void logModerationAction(int postID, String username, String action,
-     * reason)
+     * String reason)
      * </p>
      *
      * <p>
@@ -1887,9 +1853,7 @@ public class Database {
         if (loginStaff(user))
             roles.add(Role.STAFF);
         return roles;
-    }
-
-    // --- THREAD MANAGEMENT OPERATIONS ---
+    } // --- THREAD MANAGEMENT OPERATIONS ---
 
     /**
      * Creates a new discussion thread.
@@ -2025,4 +1989,5 @@ public class Database {
             e.printStackTrace();
         }
     }
+
 }
