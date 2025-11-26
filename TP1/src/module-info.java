@@ -5,8 +5,6 @@ module FoundationsF25 {
     exports entityClasses;
     exports guiDiscussions;
 
-    requires static junit;
-
     opens applicationMain to javafx.graphics, javafx.fxml;
     opens entityClasses to javafx.base;
 

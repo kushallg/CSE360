@@ -1636,7 +1636,7 @@ public class Database {
         } catch (SQLException e) {
             e.printStackTrace();
         }
-    }<<<<<<<HEAD
+    }
 
     // Moderation and Visibility Control for Posts
 
