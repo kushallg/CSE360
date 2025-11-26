@@ -20,27 +20,21 @@ import javafx.scene.shape.Circle;
 import javafx.scene.text.Font;
 import javafx.stage.Stage;
 import javafx.geometry.Pos;
-import database.Database; // <<< NEW
-import java.util.List; // <<< NEW
+import database.Database;           // <<< NEW
+import java.util.List;             // <<< NEW
 
 /**
- * <p>
- * Title: ViewDiscussions Class
- * </p>
+ * <p> Title: ViewDiscussions Class </p>
  *
- * <p>
- * Description: The Java/FX-based view for the discussion forum. This class
+ * <p> Description: The Java/FX-based view for the discussion forum. This class
  * is responsible for displaying the list of posts and replies, and providing
- * controls for the user to interact with them.
- * </p>
+ * controls for the user to interact with them. </p>
  *
- * <p>
- * Copyright: Lynn Robert Carter © 2025
- * </p>
+ * <p> Copyright: Lynn Robert Carter © 2025 </p>
  *
  * @author Kushal Gadamsetty
  *
- * @version 1.05 2025-10-20 Added unread reply UI
+ * @version 1.05	2025-10-20 Added unread reply UI
  */
 public class ViewDiscussions {
 
@@ -51,6 +45,7 @@ public class ViewDiscussions {
     protected static ListView<Post> listView_Posts = new ListView<>();
     protected static TextArea textArea_PostContent = new TextArea();
     protected static ListView<Reply> listView_Replies = new ListView<>();
+    
 
     protected static Button button_CreatePost = new Button("Create New Post");
     protected static Button button_EditPost = new Button("Edit Selected Post");
@@ -72,6 +67,7 @@ public class ViewDiscussions {
     protected static TextField textField_Search = new TextField();
     protected static Button button_Search = new Button("Search");
 
+
     protected static Stage theStage;
     protected static User theUser;
     private static Pane theRootPane;
@@ -83,17 +79,12 @@ public class ViewDiscussions {
     private static Database theDatabase = applicationMain.FoundationsMain.database;
 
     /**
-     * <p>
-     * Method: void displayDiscussions(Stage ps, User user)
-     * </p>
+     * <p> Method: void displayDiscussions(Stage ps, User user) </p>
      * 
-     * <p>
-     * Description: Displays the discussions view for the given user by setting up
-     * the scene
-     * and initializing the interface if it hasn't been created yet.
-     * </p>
+     * <p> Description: Displays the discussions view for the given user by setting up the scene
+     * and initializing the interface if it hasn't been created yet. </p>
      * 
-     * @param ps   is the stage
+     * @param ps is the stage
      * 
      * @param user is the user that is logged in
      * 
@@ -112,10 +103,11 @@ public class ViewDiscussions {
         theStage.setTitle("CSE 360 Foundations: Discussion Forum");
         theStage.setScene(theDiscussionsScene);
         theStage.show();
-
-        boolean isStaffOrAdmin = theUser != null &&
+        
+        boolean isStaffOrAdmin =
+                theUser != null &&
                 (theUser.getAdminRole() ||
-                        (theUser.getNewStaff() && !theUser.getNewStudent()));
+                 (theUser.getNewStaff() && !theUser.getNewStudent()));
 
         // Hide from students completely
         button_ToggleVisibility.setVisible(isStaffOrAdmin);
@@ -129,13 +121,9 @@ public class ViewDiscussions {
     }
 
     /**
-     * <p>
-     * Method: void setupUI()
-     * </p>
+     * <p> Method: void setupUI() </p>
      * 
-     * <p>
-     * Description: Builds and configures all UI elements for the discussions view.
-     * </p>
+     * <p> Description: Builds and configures all UI elements for the discussions view. </p>
      * 
      */
     private static void setupUI() {
@@ -145,21 +133,9 @@ public class ViewDiscussions {
         comboBox_Threads.setLayoutX(20);
         comboBox_Threads.setLayoutY(50);
         comboBox_Threads.setPrefWidth(150);
-        // Determine if user is Staff or Admin
-        boolean isStaffOrAdmin = theUser != null &&
-                (theUser.getAdminRole() || (theUser.getNewStaff() && !theUser.getNewStudent()));
-
-        java.util.List<String> threadTitles;
-        if (isStaffOrAdmin) {
-            // Staff/Admin see ALL threads (including hidden "Staff Only" threads)
-            threadTitles = ControllerDiscussions.theDatabase.getAllThreadTitles();
-        } else {
-            // Students only see threads marked as visible
-            threadTitles = ControllerDiscussions.theDatabase.getVisibleThreadTitles();
-        }
-
-        comboBox_Threads.getItems().setAll(threadTitles);
+        comboBox_Threads.getItems().addAll("All Threads", "General", "Homework", "Exams");
         comboBox_Threads.getSelectionModel().selectFirst();
+        
 
         textField_Search.setLayoutX(180);
         textField_Search.setLayoutY(50);
@@ -187,41 +163,40 @@ public class ViewDiscussions {
         button_UnreadReplies.setPrefWidth(110);
         button_UnreadReplies.setOnAction(event -> ControllerDiscussions.viewUnreadReplies());
 
+
         // Posts List
         listView_Posts.setLayoutX(20);
         listView_Posts.setLayoutY(90);
         listView_Posts.setPrefSize(760, 200);
         listView_Posts.getSelectionModel().selectedItemProperty().addListener((obs, oldSelection, newSelection) -> {
-            ControllerDiscussions.postSelected(newSelection);
-
-            label_PostSummary.setLayoutX(540);
-            label_PostSummary.setLayoutY(270);
-            label_PostSummary.setFont(Font.font("Arial", 14));
-            label_PostSummary.setStyle("-fx-font-weight: bold;");
+        ControllerDiscussions.postSelected(newSelection);
+            
+        label_PostSummary.setLayoutX(540);
+        label_PostSummary.setLayoutY(270);
+        label_PostSummary.setFont(Font.font("Arial", 14));
+        label_PostSummary.setStyle("-fx-font-weight: bold;");
 
             // Position the reply summary label (shows total and unread reply counts)
-            label_ReplySummary.setLayoutX(330);
-            label_ReplySummary.setLayoutY(270);
-            label_ReplySummary.setFont(Font.font("Arial", 14));
-            label_ReplySummary.setStyle("-fx-font-weight: bold;");
-
+        label_ReplySummary.setLayoutX(330);
+        label_ReplySummary.setLayoutY(270);
+        label_ReplySummary.setFont(Font.font("Arial", 14));
+        label_ReplySummary.setStyle("-fx-font-weight: bold;");
+        
+        
         });
+        
 
+        
         // Custom ListCell for showing a blue dot for unread posts
         listView_Posts.setCellFactory(param -> new ListCell<Post>() {
-            /**
-             * <p>
-             * Method: void updateItem(Post post, boolean empty)
-             * </p>
+        	/**
+             * <p> Method: void updateItem(Post post, boolean empty) </p>
              * 
-             * <p>
-             * Description: Adds a blue dot next to unread posts in the list view.
-             * </p>
+             * <p> Description: Adds a blue dot next to unread posts in the list view. </p>
              * 
-             * @param post  is the post object
+             * @param post is the post object 
              * 
-             * @param empty is a boolean indicating whether this cell is empty; true if the
-             *              cell should be cleared
+             * @param empty is a boolean indicating whether this cell is empty; true if the cell should be cleared
              */
             @Override
             protected void updateItem(Post post, boolean empty) {
@@ -242,7 +217,8 @@ public class ViewDiscussions {
 
                     String labelText;
                     if (isStudentRole && theUser != null) {
-                        List<Reply> allReplies = theDatabase.getRepliesForPost(post.getPostID(), theUser.getUserName());
+                        List<Reply> allReplies =
+                                theDatabase.getRepliesForPost(post.getPostID(), theUser.getUserName());
 
                         long visibleCount = allReplies.stream()
                                 .filter(Reply::isVisible)
@@ -257,7 +233,8 @@ public class ViewDiscussions {
                                 post.getTitle(),
                                 post.getThread(),
                                 visibleCount,
-                                unreadVisible);
+                                unreadVisible
+                        );
                     } else {
                         // Admin/staff (or no user) see the original DB-counted values
                         labelText = post.toString();
@@ -268,6 +245,7 @@ public class ViewDiscussions {
                 }
             }
         });
+
 
         // Post Content
         textArea_PostContent.setLayoutX(20);
@@ -283,67 +261,62 @@ public class ViewDiscussions {
             ControllerDiscussions.replySelected(newSelection);
         });
 
+        
         // Custom ListCell for showing a blue dot for unread replies
         listView_Replies.setCellFactory(param -> new ListCell<Reply>() {
-            /**
-             * <p>
-             * Method: updateItem(Reply reply, boolean empty)
-             * </p>
+        	/**
+             * <p> Method: updateItem(Reply reply, boolean empty) </p>
              * 
-             * <p>
-             * Description: Adds a blue dot next to unread replies in the list view.
-             * </p>
+             * <p> Description: Adds a blue dot next to unread replies in the list view. </p>
              * 
-             * @param reply is the reply object
+             * @param reply is the reply object 
              * 
-             * @param empty is a boolean indicating whether this cell is empty; true if the
-             *              cell should be cleared
+             * @param empty is a boolean indicating whether this cell is empty; true if the cell should be cleared
              * 
              */
-            @Override
-            protected void updateItem(Reply reply, boolean empty) {
-                super.updateItem(reply, empty);
-                if (empty || reply == null) {
-                    setText(null);
-                    setGraphic(null);
-                    return;
-                }
+        	@Override
+        	protected void updateItem(Reply reply, boolean empty) {
+        	    super.updateItem(reply, empty);
+        	    if (empty || reply == null) {
+        	        setText(null);
+        	        setGraphic(null);
+        	        return;
+        	    }
 
-                HBox hbox = new HBox(5);
-                Circle dot = new Circle(5, Color.BLUE);
-                if (reply.isViewed())
-                    dot.setVisible(false);
+        	    HBox hbox = new HBox(5);
+        	    Circle dot = new Circle(5, Color.BLUE);
+        	    if (reply.isViewed()) dot.setVisible(false);
 
-                // current session info
-                String currentUser = (ViewDiscussions.theUser == null) ? null : ViewDiscussions.theUser.getUserName();
-                boolean isStaffOrAdmin = (ViewDiscussions.theUser != null)
-                        && (ViewDiscussions.theUser.getAdminRole() || ViewDiscussions.theUser.getNewStaff());
+        	    // current session info
+        	    String currentUser = (ViewDiscussions.theUser == null) ? null : ViewDiscussions.theUser.getUserName();
+        	    boolean isStaffOrAdmin = (ViewDiscussions.theUser != null)
+        	            && (ViewDiscussions.theUser.getAdminRole() || ViewDiscussions.theUser.getNewStaff());
 
-                boolean isPrivate = "private".equalsIgnoreCase(reply.getVisibility());
-                boolean isHidden = !reply.isVisible();
+        	    boolean isPrivate = "private".equalsIgnoreCase(reply.getVisibility());
+        	    boolean isHidden = !reply.isVisible();
 
-                String labelText;
-                if (isHidden && isStaffOrAdmin) {
-                    // Hidden reply visible to staff/admin (keep original behavior)
-                    labelText = reply.getAuthorUsername() + ": " + reply.getContent() + " [Hidden by Staff]";
-                } else if (isPrivate) {
-                    // Private feedback: decide whether current session can see the content
-                    boolean canSeePrivateContent = reply.isVisibleTo(currentUser);
-                    if (canSeePrivateContent) {
-                        // show content but mark as private
-                        labelText = reply.getAuthorUsername() + ": " + reply.getContent() + " [private feedback]";
-                    } else {
-                        // do NOT show the private content to unauthorized users — show a neutral label
-                        labelText = reply.getAuthorUsername() + ": " + "[private feedback]";
-                    }
-                } else {
-                    // Normal public reply
-                    labelText = reply.getAuthorUsername() + ": " + reply.getContent();
-                }
+        	    String labelText;
+        	    if (isHidden && isStaffOrAdmin) {
+        	        // Hidden reply visible to staff/admin (keep original behavior)
+        	        labelText = reply.getAuthorUsername() + ": " + reply.getContent() + " [Hidden by Staff]";
+        	    } else if (isPrivate) {
+        	        // Private feedback: decide whether current session can see the content
+        	        boolean canSeePrivateContent = reply.isVisibleTo(currentUser);
+        	        if (canSeePrivateContent) {
+        	            // show content but mark as private
+        	            labelText = reply.getAuthorUsername() + ": " + reply.getContent() + " [private feedback]";
+        	        } else {
+        	            // do NOT show the private content to unauthorized users — show a neutral label
+        	            labelText = reply.getAuthorUsername() + ": " + "[private feedback]";
+        	        }
+        	    } else {
+        	        // Normal public reply
+        	        labelText = reply.getAuthorUsername() + ": " + reply.getContent();
+        	    }
 
-                hbox.getChildren().addAll(dot, new Label(labelText));
-                setGraphic(hbox);
-            }
+        	    hbox.getChildren().addAll(dot, new Label(labelText));
+        	    setGraphic(hbox);
+        	}
         });
 
         // Buttons
@@ -355,18 +328,21 @@ public class ViewDiscussions {
 
         setupButtonUI(button_DeletePost, "Dialog", 14, 150, Pos.CENTER, 320, 520);
         button_DeletePost.setOnAction(event -> ControllerDiscussions.deletePost());
-
+        
         setupButtonUI(button_AddReply, "Dialog", 14, 150, Pos.CENTER, 470, 520);
         button_AddReply.setOnAction(event -> ControllerDiscussions.addReply());
 
         setupButtonUI(button_EditReply, "Dialog", 14, 150, Pos.CENTER, 20, 560);
         button_EditReply.setOnAction(event -> ControllerDiscussions.editReply());
-
+        
         setupButtonUI(button_DeleteReply, "Dialog", 14, 150, Pos.CENTER, 170, 560);
         button_DeleteReply.setOnAction(event -> ControllerDiscussions.deleteReply());
 
         setupButtonUI(button_Return, "Dialog", 14, 150, Pos.CENTER, 620, 520);
         button_Return.setOnAction(event -> ControllerDiscussions.returnToHome());
+        
+        boolean isStaffOrAdmin = (ViewDiscussions.theUser != null) &&
+                (ViewDiscussions.theUser.getAdminRole() || ViewDiscussions.theUser.getNewStaff());
 
         // Normal buttons (everyone sees these)
         theRootPane.getChildren().addAll(
@@ -376,7 +352,8 @@ public class ViewDiscussions {
                 listView_Replies, label_ReplySummary,
                 button_CreatePost, button_EditPost, button_DeletePost,
                 button_AddReply, button_EditReply, button_DeleteReply,
-                button_Return);
+                button_Return
+        );
 
         // They will be shown/hidden per user in displayDiscussions
         setupButtonUI(button_ToggleVisibility, "Dialog", 14, 150, Pos.CENTER, 320, 560);
@@ -389,21 +366,16 @@ public class ViewDiscussions {
     }
 
     /**
-     * <p>
-     * Method: void setupLabelUI(Label l, String ff, double f, double w, Pos p,
-     * double x, double y)
-     * </p>
-     * <p>
-     * Description: Sets up label UI elements.
-     * </p>
+     * <p> Method: void setupLabelUI(Label l, String ff, double f, double w, Pos p, double x, double y) </p>
+     * <p> Description: Sets up label UI elements. </p>
      * 
      * @param l  is the label object being configured
-     * @param ff is the font family name used for the label text
-     * @param f  is the font size of the label text
-     * @param w  is the minimum width of the label
-     * @param p  is the Pos alignment of the label text within the button
-     * @param x  is the X coordinate for the label's position on the pane
-     * @param y  is the Y coordinate for the label's position on the pane
+	 * @param ff is the font family name used for the label text
+	 * @param f  is the font size of the label text
+	 * @param w  is the minimum width of the label
+	 * @param p  is the Pos alignment of the label text within the button
+	 * @param x  is the X coordinate for the label's position on the pane
+	 * @param y  is the Y coordinate for the label's position on the pane
      */
     private static void setupLabelUI(Label l, String ff, double f, double w, Pos p, double x, double y) {
         l.setFont(Font.font(ff, f));
@@ -414,22 +386,17 @@ public class ViewDiscussions {
     }
 
     /**
-     * <p>
-     * Method: void setupButtonUI(Button b, String ff, double f, double w, Pos p,
-     * double x, double y)
-     * </p>
+     * <p> Method: void setupButtonUI(Button b, String ff, double f, double w, Pos p, double x, double y) </p>
      * 
-     * <p>
-     * Description: Sets up button UI elements.
-     * </p>
+     * <p> Description: Sets up button UI elements. </p>
      * 
      * @param b  is the button object being configured
-     * @param ff is the font family name used for the button text
-     * @param f  is the font size of the button text
-     * @param w  is the minimum width of the button
-     * @param p  is the Pos alignment of the button text within the button
-     * @param x  is the X coordinate for the button’s position on the pane
-     * @param y  is the Y coordinate for the button’s position on the pane
+	 * @param ff is the font family name used for the button text
+	 * @param f  is the font size of the button text
+	 * @param w  is the minimum width of the button
+	 * @param p  is the Pos alignment of the button text within the button
+	 * @param x  is the X coordinate for the button’s position on the pane
+	 * @param y  is the Y coordinate for the button’s position on the pane
      * 
      */
     private static void setupButtonUI(Button b, String ff, double f, double w, Pos p, double x, double y) {
