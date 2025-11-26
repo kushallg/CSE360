@@ -1661,10 +1661,11 @@ public class Database {
 
     /**
      * Unhides reply so that only authorized users can see it.
-     * @param replyID The ID of the reply
-     * @param postID The ID of the post whose replies needs to be fetched.
+     * 
+     * @param replyID  The ID of the reply
+     * @param postID   The ID of the post whose replies needs to be fetched.
      * @param username The username of who is hiding the post.
-     * @param reason The reason why the post is being hidden.
+     * @param reason   The reason why the post is being hidden.
      */
     public void unhideReply(int replyID, int postID, String username, String reason) {
         String sql = "UPDATE repliesDB SET visible = TRUE WHERE replyID = ?";
@@ -1672,7 +1673,10 @@ public class Database {
             pstmt.setInt(1, replyID);
             pstmt.executeUpdate();
             logModerationAction(postID, username, "UNHIDE_REPLY", reason);
-=======
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
 
     // --- ADMIN REQUESTS OPERATIONS ---
 
@@ -1686,13 +1690,10 @@ public class Database {
             pstmt.setTimestamp(3, now);
             pstmt.setTimestamp(4, now);
             pstmt.executeUpdate();
->>>>>>> 511b073 (Implement Admin Requests, Thread Management, and Bug Fixes)
         } catch (SQLException e) {
             e.printStackTrace();
         }
     }
-
-    <<<<<<<HEAD
 
     /**
      * Flags reply and logs moderation.
@@ -1728,7 +1729,7 @@ public class Database {
     /**
      * <p>
      * Method: void logModerationAction(int postID, String username, String action,
-     * String reason)
+     * reason)
      * </p>
      *
      * <p>
@@ -1760,38 +1761,44 @@ public class Database {
     }
 
     /**
-     * <p> Method: void printModerationLog() </p>
+     * <p>
+     * Method: void printModerationLog()
+     * </p>
      *
-     * <p> Description: Reads all rows from the moderation_log
-     * table and prints them to the console for moderation / testing purposes. </p>
+     * <p>
+     * Description: Reads all rows from the moderation_log
+     * table and prints them to the console for moderation / testing purposes.
+     * </p>
      */
     public void printModerationLog() {
         String sql = "SELECT logID, postID, username, action, reason, timestamp "
-                   + "FROM moderation_log ORDER BY logID";
+                + "FROM moderation_log ORDER BY logID";
 
         try (PreparedStatement pstmt = connection.prepareStatement(sql);
-             ResultSet rs = pstmt.executeQuery()) {
+                ResultSet rs = pstmt.executeQuery()) {
 
             System.out.println("========== MODERATION LOG ==========");
             while (rs.next()) {
-                int logID        = rs.getInt("logID");
+                int logID = rs.getInt("logID");
                 int loggedPostID = rs.getInt("postID");
-                String loggedUser   = rs.getString("username");
+                String loggedUser = rs.getString("username");
                 String loggedAction = rs.getString("action");
                 String loggedReason = rs.getString("reason");
-                Timestamp ts        = rs.getTimestamp("timestamp");
+                Timestamp ts = rs.getTimestamp("timestamp");
 
                 System.out.println(
-                    "#" + logID +
-                    " postID=" + loggedPostID +
-                    " user=" + loggedUser +
-                    " action=" + loggedAction +
-                    " reason=" + loggedReason +
-                    " time=" + ts
-                );
+                        "#" + logID +
+                                " postID=" + loggedPostID +
+                                " user=" + loggedUser +
+                                " action=" + loggedAction +
+                                " reason=" + loggedReason +
+                                " time=" + ts);
             }
             System.out.println("=========================================");
-=======
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
 
     public List<entityClasses.AdminRequest> getAllAdminRequests() {
         List<entityClasses.AdminRequest> list = new ArrayList<>();
@@ -1823,13 +1830,10 @@ public class Database {
             pstmt.setTimestamp(4, Timestamp.from(Instant.now()));
             pstmt.setInt(5, req.getRequestID());
             pstmt.executeUpdate();
->>>>>>> 511b073 (Implement Admin Requests, Thread Management, and Bug Fixes)
         } catch (SQLException e) {
             e.printStackTrace();
         }
     }
-
-    <<<<<<<HEAD
 
     // For Testing Purposes Only
 
@@ -1840,11 +1844,15 @@ public class Database {
 
     public java.util.EnumSet<Role> getRoles(entityClasses.User user) {
         java.util.EnumSet<Role> roles = java.util.EnumSet.noneOf(Role.class);
-        if (loginAdmin(user))   roles.add(Role.ADMIN);
-        if (loginStudent(user)) roles.add(Role.STUDENT);
-        if (loginStaff(user))   roles.add(Role.STAFF);
+        if (loginAdmin(user))
+            roles.add(Role.ADMIN);
+        if (loginStudent(user))
+            roles.add(Role.STUDENT);
+        if (loginStaff(user))
+            roles.add(Role.STAFF);
         return roles;
-=======
+    }
+
     // --- THREAD MANAGEMENT OPERATIONS ---
 
     public void createThread(String title) {
@@ -1948,6 +1956,5 @@ public class Database {
         } catch (SQLException e) {
             e.printStackTrace();
         }
->>>>>>> 511b073 (Implement Admin Requests, Thread Management, and Bug Fixes)
     }
 }

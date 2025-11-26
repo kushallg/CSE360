@@ -26,8 +26,4 @@ public class ControllerStaffHome {
 		System.exit(0);
 	}
 
-	protected static void goToDiscussions() {
-		guiDiscussions.ViewDiscussions.displayDiscussions(ViewStaffHome.theStage, ViewStaffHome.theUser);
-	}
-
 }
