@@ -39,7 +39,9 @@ public class Database {
     }
 
     /**
-     * Establishes a connection to the H2 database and initializes tables if they don't exist.
+     * Establishes a connection to the H2 database and initializes tables if they
+     * don't exist.
+     * 
      * @throws SQLException if a database access error occurs.
      */
     public void connectToDatabase() throws SQLException {
@@ -56,6 +58,7 @@ public class Database {
 
     /**
      * Creates the necessary tables if they are not already present.
+     * 
      * @throws SQLException if a database access error occurs.
      */
     private void createTables() throws SQLException {
@@ -73,7 +76,8 @@ public class Database {
                 + "newStaff BOOL DEFAULT FALSE)";
         statement.execute(userTable);
 
-        // This SQL statement defines the structure of the table that stores invitation codes.
+        // This SQL statement defines the structure of the table that stores invitation
+        // codes.
         String invitationCodesTable = "CREATE TABLE IF NOT EXISTS InvitationCodes ("
                 + "code VARCHAR(10) PRIMARY KEY, "
                 + "emailAddress VARCHAR(255), "
@@ -81,17 +85,23 @@ public class Database {
         statement.execute(invitationCodesTable);
 
         // Add expiry and uses columns if they don't exist
-        try { statement.execute("ALTER TABLE InvitationCodes ADD COLUMN expiresAt TIMESTAMP"); } catch (SQLException ignore) {}
-        try { statement.execute("ALTER TABLE InvitationCodes ADD COLUMN usesRemaining INT DEFAULT 0"); } catch (SQLException ignore) {}
+        try {
+            statement.execute("ALTER TABLE InvitationCodes ADD COLUMN expiresAt TIMESTAMP");
+        } catch (SQLException ignore) {
+        }
+        try {
+            statement.execute("ALTER TABLE InvitationCodes ADD COLUMN usesRemaining INT DEFAULT 0");
+        } catch (SQLException ignore) {
+        }
 
-        //seed a one-time code that expires in 1 minute
+        // seed a one-time code that expires in 1 minute
         try (PreparedStatement ps = connection.prepareStatement(
-            "MERGE INTO InvitationCodes (code, emailAddress, role, expiresAt, usesRemaining) KEY(code) VALUES (?,?,?,?,?)")) {
+                "MERGE INTO InvitationCodes (code, emailAddress, role, expiresAt, usesRemaining) KEY(code) VALUES (?,?,?,?,?)")) {
             ps.setString(1, "CSE360A1");
             ps.setString(2, null);
             ps.setString(3, "MEMBER");
             ps.setTimestamp(4, Timestamp.from(Instant.now().plusSeconds(1 * 60))); // +1 minute
-            ps.setInt(5, 1);             // one-time use
+            ps.setInt(5, 1); // one-time use
             ps.executeUpdate();
         }
 
@@ -99,39 +109,53 @@ public class Database {
                 + "username VARCHAR(255) PRIMARY KEY, "
                 + "otp VARCHAR(10))";
         statement.execute(otpsTable);
-        
+
         // --- NEW TABLES FOR HW2 ---
         String postsTable = "CREATE TABLE IF NOT EXISTS postsDB ("
                 + "postID INT AUTO_INCREMENT PRIMARY KEY, "
                 + "authorUsername VARCHAR(255), "
                 + "title VARCHAR(255), "
                 + "content VARCHAR(4096), "
-                + "thread VARCHAR(255) DEFAULT 'General', " 
-                + "visible BOOLEAN DEFAULT TRUE, " //added visibility feature
-                + "deleted BOOLEAN DEFAULT FALSE, " 
+                + "thread VARCHAR(255) DEFAULT 'General', "
+                + "visible BOOLEAN DEFAULT TRUE, " // added visibility feature
+                + "deleted BOOLEAN DEFAULT FALSE, "
                 + "timestamp TIMESTAMP)";
         statement.execute(postsTable);
-        
-        try { statement.execute("ALTER TABLE postsDB ADD COLUMN visible BOOLEAN DEFAULT TRUE"); }
-        catch (SQLException ignore) {}
+
+        try {
+            statement.execute("ALTER TABLE postsDB ADD COLUMN visible BOOLEAN DEFAULT TRUE");
+        } catch (SQLException ignore) {
+        }
+        try {
+            statement.execute("ALTER TABLE postsDB ADD COLUMN thread VARCHAR(255) DEFAULT 'General'");
+        } catch (SQLException ignore) {
+        }
 
         String repliesTable = "CREATE TABLE IF NOT EXISTS repliesDB ("
                 + "replyID INT AUTO_INCREMENT PRIMARY KEY, "
                 + "postID INT, "
                 + "authorUsername VARCHAR(255), "
                 + "content VARCHAR(2048), "
-                + "visible BOOLEAN DEFAULT TRUE, " //added visibility feature
+                + "visible BOOLEAN DEFAULT TRUE, " // added visibility feature
                 + "visibility VARCHAR(20) DEFAULT 'public', "
                 + "recipient VARCHAR(255), "
                 + "timestamp TIMESTAMP)";
         statement.execute(repliesTable);
-        
-        try { statement.execute("ALTER TABLE repliesDB ADD COLUMN visible BOOLEAN DEFAULT TRUE"); }
-        catch (SQLException ignore) {}
-        
-        try { statement.execute("ALTER TABLE repliesDB ADD COLUMN visibility VARCHAR(20) DEFAULT 'public'"); } catch (SQLException ignore) {}
 
-        try { statement.execute("ALTER TABLE repliesDB ADD COLUMN recipient VARCHAR(255)"); } catch (SQLException ignore) {}
+        try {
+            statement.execute("ALTER TABLE repliesDB ADD COLUMN visible BOOLEAN DEFAULT TRUE");
+        } catch (SQLException ignore) {
+        }
+
+        try {
+            statement.execute("ALTER TABLE repliesDB ADD COLUMN visibility VARCHAR(20) DEFAULT 'public'");
+        } catch (SQLException ignore) {
+        }
+
+        try {
+            statement.execute("ALTER TABLE repliesDB ADD COLUMN recipient VARCHAR(255)");
+        } catch (SQLException ignore) {
+        }
 
         String viewedPostsTable = "CREATE TABLE IF NOT EXISTS viewed_posts ("
                 + "postID INT, "
@@ -144,7 +168,7 @@ public class Database {
                 + "username VARCHAR(255), "
                 + "PRIMARY KEY (replyID, username))";
         statement.execute(viewedRepliesTable);
-        
+
         String moderationLogTable = "CREATE TABLE IF NOT EXISTS moderation_log ("
                 + "logID INT AUTO_INCREMENT PRIMARY KEY, "
                 + "postID INT, "
@@ -154,13 +178,43 @@ public class Database {
                 + "timestamp TIMESTAMP"
                 + ")";
         statement.execute(moderationLogTable);
-        
+
+        // Table for Admin Requests
+        String requestsTable = "CREATE TABLE IF NOT EXISTS admin_requests ("
+                + "requestID INT AUTO_INCREMENT PRIMARY KEY, "
+                + "requester VARCHAR(255), "
+                + "description VARCHAR(2048), "
+                + "status VARCHAR(50), "
+                + "adminComments VARCHAR(4096), "
+                + "created_at TIMESTAMP, "
+                + "updated_at TIMESTAMP)";
+        statement.execute(requestsTable);
+
+        // Table for Discussion Threads
+        String threadsTable = "CREATE TABLE IF NOT EXISTS discussion_threads ("
+                + "title VARCHAR(255) PRIMARY KEY, "
+                + "visible BOOLEAN DEFAULT TRUE, "
+                + "created_at TIMESTAMP)";
+        statement.execute(threadsTable);
+
+        // Seed default threads if empty
+        try {
+            ResultSet rs = statement.executeQuery("SELECT COUNT(*) FROM discussion_threads");
+            rs.next();
+            if (rs.getInt(1) == 0) {
+                statement.execute("INSERT INTO discussion_threads VALUES ('General', TRUE, CURRENT_TIMESTAMP)");
+                statement.execute("INSERT INTO discussion_threads VALUES ('Homework', TRUE, CURRENT_TIMESTAMP)");
+                statement.execute("INSERT INTO discussion_threads VALUES ('Exams', TRUE, CURRENT_TIMESTAMP)");
+            }
+        } catch (SQLException ignore) {
+        }
+
+        // --- END OF NEW TABLES ---
     }
-    
-    
 
     /**
      * Checks if the main user table is empty.
+     * 
      * @return true if no users exist in the database, false otherwise.
      */
     public boolean isDatabaseEmpty() {
@@ -170,14 +224,15 @@ public class Database {
             if (resultSet.next()) {
                 return resultSet.getInt("count") == 0;
             }
-        }  catch (SQLException e) {
+        } catch (SQLException e) {
             return false;
         }
         return true;
     }
-    
+
     /**
      * Gets the total number of users currently in the database.
+     * 
      * @return The integer count of users.
      */
     public int getNumberOfUsers() {
@@ -195,6 +250,7 @@ public class Database {
 
     /**
      * Registers a new user by inserting their details into the database.
+     * 
      * @param user The User object containing all the details for the new user.
      * @throws SQLException if a database access error occurs.
      */
@@ -205,43 +261,44 @@ public class Database {
         try (PreparedStatement pstmt = connection.prepareStatement(insertUser)) {
             currentUsername = user.getUserName();
             pstmt.setString(1, currentUsername);
-            
+
             currentPassword = user.getPassword();
             pstmt.setString(2, currentPassword);
-            
+
             currentFirstName = user.getFirstName();
             pstmt.setString(3, currentFirstName);
-            
-            currentMiddleName = user.getMiddleName();           
+
+            currentMiddleName = user.getMiddleName();
             pstmt.setString(4, currentMiddleName);
-            
+
             currentLastName = user.getLastName();
             pstmt.setString(5, currentLastName);
-            
+
             currentPreferredFirstName = user.getPreferredFirstName();
             pstmt.setString(6, currentPreferredFirstName);
-            
+
             currentEmailAddress = user.getEmailAddress();
             pstmt.setString(7, currentEmailAddress);
-            
+
             currentAdminRole = user.getAdminRole();
             pstmt.setBoolean(8, currentAdminRole);
-            
+
             currentNewStudent = user.getNewStudent();
             pstmt.setBoolean(9, currentNewStudent);
-            
+
             currentNewStaff = user.getNewStaff();
             pstmt.setBoolean(10, currentNewStaff);
-            
+
             pstmt.executeUpdate();
         }
     }
-    
+
     /**
      * Retrieves a list of all usernames from the database.
+     * 
      * @return A List of strings, where each string is a username.
      */
-    public List<String> getUserList () {
+    public List<String> getUserList() {
         List<String> userList = new ArrayList<String>();
         userList.add("<Select a User>");
         String query = "SELECT userName FROM userDB";
@@ -258,10 +315,12 @@ public class Database {
 
     /**
      * Authenticates a user with admin privileges.
+     * 
      * @param user The User object with username and password to verify.
-     * @return true if the credentials are valid and the user is an admin, false otherwise.
+     * @return true if the credentials are valid and the user is an admin, false
+     *         otherwise.
      */
-    public boolean loginAdmin(User user){
+    public boolean loginAdmin(User user) {
         String query = "SELECT * FROM userDB WHERE userName = ? AND password = ? AND "
                 + "adminRole = TRUE";
         try (PreparedStatement pstmt = connection.prepareStatement(query)) {
@@ -269,16 +328,18 @@ public class Database {
             pstmt.setString(2, user.getPassword());
             ResultSet rs = pstmt.executeQuery();
             return rs.next();
-        } catch  (SQLException e) {
+        } catch (SQLException e) {
             e.printStackTrace();
         }
         return false;
     }
-    
+
     /**
      * Authenticates a user with student privileges.
+     * 
      * @param user The User object with username and password to verify.
-     * @return true if the credentials are valid and the user is a student, false otherwise.
+     * @return true if the credentials are valid and the user is a student, false
+     *         otherwise.
      */
     public boolean loginStudent(User user) {
         String query = "SELECT * FROM userDB WHERE userName = ? AND password = ? AND "
@@ -288,16 +349,18 @@ public class Database {
             pstmt.setString(2, user.getPassword());
             ResultSet rs = pstmt.executeQuery();
             return rs.next();
-        } catch  (SQLException e) {
-               e.printStackTrace();
+        } catch (SQLException e) {
+            e.printStackTrace();
         }
         return false;
     }
 
     /**
      * Authenticates a user with staff privileges.
+     * 
      * @param user The User object with username and password to verify.
-     * @return true if the credentials are valid and the user is staff, false otherwise.
+     * @return true if the credentials are valid and the user is staff, false
+     *         otherwise.
      */
     public boolean loginStaff(User user) {
         String query = "SELECT * FROM userDB WHERE userName = ? AND password = ? AND "
@@ -307,24 +370,25 @@ public class Database {
             pstmt.setString(2, user.getPassword());
             ResultSet rs = pstmt.executeQuery();
             return rs.next();
-        } catch  (SQLException e) {
-               e.printStackTrace();
+        } catch (SQLException e) {
+            e.printStackTrace();
         }
         return false;
     }
-    
+
     /**
      * Checks if a specific username already exists in the database.
+     * 
      * @param userName The username to check.
      * @return true if the username exists, false otherwise.
      */
     public boolean doesUserExist(String userName) {
         String query = "SELECT COUNT(*) FROM userDB WHERE userName = ?";
         try (PreparedStatement pstmt = connection.prepareStatement(query)) {
-            
+
             pstmt.setString(1, userName);
             ResultSet rs = pstmt.executeQuery();
-            
+
             if (rs.next()) {
                 return rs.getInt(1) > 0;
             }
@@ -336,31 +400,37 @@ public class Database {
 
     /**
      * Counts the number of roles (Admin, Student, Staff) assigned to a user.
+     * 
      * @param user The User object to check.
      * @return The integer count of roles.
      */
-    public int getNumberOfRoles (User user) {
+    public int getNumberOfRoles(User user) {
         int numberOfRoles = 0;
-        if (user.getAdminRole()) numberOfRoles++;
-        if (user.getNewStudent()) numberOfRoles++;
-        if (user.getNewStaff()) numberOfRoles++;
+        if (user.getAdminRole())
+            numberOfRoles++;
+        if (user.getNewStudent())
+            numberOfRoles++;
+        if (user.getNewStaff())
+            numberOfRoles++;
         return numberOfRoles;
-    }   
+    }
 
     /**
-     * Generates a new, unique invitation code, stores it in the database, and returns it.
+     * Generates a new, unique invitation code, stores it in the database, and
+     * returns it.
      * The code is valid for one use and expires after a short time.
+     * 
      * @param emailAddress The email address the invitation is for.
-     * @param role The role(s) to be assigned upon registration.
+     * @param role         The role(s) to be assigned upon registration.
      * @return The generated 6-character invitation code.
      */
     public String generateInvitationCode(String emailAddress, String role) {
         String code = java.util.UUID.randomUUID().toString()
-                        .replace("-", "")
-                        .substring(0, 6);
-              
+                .replace("-", "")
+                .substring(0, 6);
+
         String sql = "INSERT INTO InvitationCodes (code, emailAddress, role, expiresAt, usesRemaining) " +
-                     "VALUES (?, ?, ?, ?, ?)";
+                "VALUES (?, ?, ?, ?, ?)";
         try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
             pstmt.setString(1, code);
             pstmt.setString(2, emailAddress);
@@ -377,6 +447,7 @@ public class Database {
 
     /**
      * Gets the total number of active invitations in the database.
+     * 
      * @return The integer count of invitations.
      */
     public int getNumberOfInvitations() {
@@ -386,14 +457,15 @@ public class Database {
             if (resultSet.next()) {
                 return resultSet.getInt("count");
             }
-        } catch  (SQLException e) {
+        } catch (SQLException e) {
             e.printStackTrace();
         }
         return 0;
     }
-    
+
     /**
      * Checks if an email address has already been used for an invitation.
+     * 
      * @param emailAddress The email address to check.
      * @return true if the email has been used, false otherwise.
      */
@@ -404,50 +476,62 @@ public class Database {
             ResultSet rs = pstmt.executeQuery();
             System.out.println(rs);
             if (rs.next()) {
-                return rs.getInt("count")>0;
+                return rs.getInt("count") > 0;
             }
         } catch (SQLException e) {
             e.printStackTrace();
         }
         return false;
     }
-    
+
     /**
      * Retrieves the role associated with a valid, unexpired invitation code.
+     * 
      * @param code The invitation code to look up.
-     * @return The role as a String if the code is valid, or an empty string otherwise.
+     * @return The role as a String if the code is valid, or an empty string
+     *         otherwise.
      */
     public String getRoleGivenAnInvitationCode(String code) {
         String sql = "SELECT role FROM InvitationCodes " +
-                     "WHERE code = ? AND expiresAt > CURRENT_TIMESTAMP AND usesRemaining > 0";
+                "WHERE code = ? AND expiresAt > CURRENT_TIMESTAMP AND usesRemaining > 0";
         try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
             pstmt.setString(1, code == null ? "" : code.trim());
             try (ResultSet rs = pstmt.executeQuery()) {
-                if (rs.next()) return rs.getString("role");
+                if (rs.next())
+                    return rs.getString("role");
             }
-        } catch (SQLException e) { e.printStackTrace(); }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
         return "";
     }
 
     /**
-     * Retrieves the email address associated with a valid, unexpired invitation code.
+     * Retrieves the email address associated with a valid, unexpired invitation
+     * code.
+     * 
      * @param code The invitation code to look up.
-     * @return The email address as a String if the code is valid, or an empty string otherwise.
+     * @return The email address as a String if the code is valid, or an empty
+     *         string otherwise.
      */
     public String getEmailAddressUsingCode(String code) {
         String sql = "SELECT emailAddress FROM InvitationCodes " +
-                     "WHERE code = ? AND expiresAt > CURRENT_TIMESTAMP AND usesRemaining > 0";
+                "WHERE code = ? AND expiresAt > CURRENT_TIMESTAMP AND usesRemaining > 0";
         try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
             pstmt.setString(1, code == null ? "" : code.trim());
             try (ResultSet rs = pstmt.executeQuery()) {
-                if (rs.next()) return rs.getString("emailAddress");
+                if (rs.next())
+                    return rs.getString("emailAddress");
             }
-        } catch (SQLException e) { e.printStackTrace(); }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
         return "";
     }
-    
+
     /**
      * Deletes an invitation code from the database after it has been used.
+     * 
      * @param code The invitation code to remove.
      */
     public void removeInvitationAfterUse(String code) {
@@ -462,7 +546,7 @@ public class Database {
                     try (PreparedStatement pstmt2 = connection.prepareStatement(query)) {
                         pstmt2.setString(1, code);
                         pstmt2.executeUpdate();
-                    }catch (SQLException e) {
+                    } catch (SQLException e) {
                         e.printStackTrace();
                     }
                 }
@@ -472,10 +556,11 @@ public class Database {
         }
         return;
     }
-    
+
     /**
      * Updates a user's password in the database.
-     * @param username The username of the account to update.
+     * 
+     * @param username    The username of the account to update.
      * @param newPassword The new password to set.
      */
     public void updatePassword(String username, String newPassword) {
@@ -489,9 +574,10 @@ public class Database {
             e.printStackTrace();
         }
     }
-    
+
     /**
      * Generates a one-time password for a user.
+     * 
      * @param username The user for whom to generate the OTP.
      * @return The generated OTP.
      */
@@ -509,11 +595,13 @@ public class Database {
         System.out.print("OTP: " + otp);
         return otp;
     }
-    
+
     /**
-     * Checks if the provided OTP is valid for the given user and removes it after use.
+     * Checks if the provided OTP is valid for the given user and removes it after
+     * use.
+     * 
      * @param username The user's username.
-     * @param otp The one-time password to validate.
+     * @param otp      The one-time password to validate.
      * @return true if the OTP is valid, false otherwise.
      */
     public boolean otpHasBeenUsed(String username, String otp) {
@@ -538,9 +626,10 @@ public class Database {
         }
         return false;
     }
-    
+
     /**
      * Retrieves a user's first name.
+     * 
      * @param username The user's username.
      * @return The user's first name.
      */
@@ -549,20 +638,21 @@ public class Database {
         try (PreparedStatement pstmt = connection.prepareStatement(query)) {
             pstmt.setString(1, username);
             ResultSet rs = pstmt.executeQuery();
-            
+
             if (rs.next()) {
                 return rs.getString("firstName");
             }
-            
+
         } catch (SQLException e) {
             e.printStackTrace();
         }
         return null;
     }
-    
+
     /**
      * Updates a user's first name in the database.
-     * @param username The username of the account to update.
+     * 
+     * @param username  The username of the account to update.
      * @param firstName The new first name to set.
      */
     public void updateFirstName(String username, String firstName) {
@@ -576,9 +666,10 @@ public class Database {
             e.printStackTrace();
         }
     }
-    
+
     /**
      * Retrieves a user's middle name from the database.
+     * 
      * @param username The username of the user.
      * @return The middle name, or null if not found.
      */
@@ -587,7 +678,7 @@ public class Database {
         try (PreparedStatement pstmt = connection.prepareStatement(query)) {
             pstmt.setString(1, username);
             ResultSet rs = pstmt.executeQuery();
-            
+
             if (rs.next()) {
                 return rs.getString("middleName");
             }
@@ -599,7 +690,8 @@ public class Database {
 
     /**
      * Updates a user's middle name in the database.
-     * @param username The username of the account to update.
+     * 
+     * @param username   The username of the account to update.
      * @param middleName The new middle name to set.
      */
     public void updateMiddleName(String username, String middleName) {
@@ -613,9 +705,10 @@ public class Database {
             e.printStackTrace();
         }
     }
-    
+
     /**
      * Retrieves a user's last name from the database.
+     * 
      * @param username The username of the user.
      * @return The last name, or null if not found.
      */
@@ -624,7 +717,7 @@ public class Database {
         try (PreparedStatement pstmt = connection.prepareStatement(query)) {
             pstmt.setString(1, username);
             ResultSet rs = pstmt.executeQuery();
-            
+
             if (rs.next()) {
                 return rs.getString("lastName");
             }
@@ -633,9 +726,10 @@ public class Database {
         }
         return null;
     }
-    
+
     /**
      * Updates a user's last name in the database.
+     * 
      * @param username The username of the account to update.
      * @param lastName The new last name to set.
      */
@@ -650,9 +744,10 @@ public class Database {
             e.printStackTrace();
         }
     }
-    
+
     /**
      * Retrieves a user's preferred first name from the database.
+     * 
      * @param username The username of the user.
      * @return The preferred first name, or null if not found.
      */
@@ -661,20 +756,21 @@ public class Database {
         try (PreparedStatement pstmt = connection.prepareStatement(query)) {
             pstmt.setString(1, username);
             ResultSet rs = pstmt.executeQuery();
-            
+
             if (rs.next()) {
                 return rs.getString("firstName");
             }
-            
+
         } catch (SQLException e) {
             e.printStackTrace();
         }
         return null;
     }
-    
+
     /**
      * Updates a user's preferred first name in the database.
-     * @param username The username of the account to update.
+     * 
+     * @param username           The username of the account to update.
      * @param preferredFirstName The new preferred first name to set.
      */
     public void updatePreferredFirstName(String username, String preferredFirstName) {
@@ -688,9 +784,10 @@ public class Database {
             e.printStackTrace();
         }
     }
-    
+
     /**
      * Retrieves a user's email address from the database.
+     * 
      * @param username The username of the user.
      * @return The email address, or null if not found.
      */
@@ -699,20 +796,21 @@ public class Database {
         try (PreparedStatement pstmt = connection.prepareStatement(query)) {
             pstmt.setString(1, username);
             ResultSet rs = pstmt.executeQuery();
-            
+
             if (rs.next()) {
                 return rs.getString("emailAddress");
             }
-            
+
         } catch (SQLException e) {
             e.printStackTrace();
         }
         return null;
     }
-    
+
     /**
      * Updates a user's email address in the database.
-     * @param username The username of the account to update.
+     * 
+     * @param username     The username of the account to update.
      * @param emailAddress The new email address to set.
      */
     public void updateEmailAddress(String username, String emailAddress) {
@@ -726,9 +824,11 @@ public class Database {
             e.printStackTrace();
         }
     }
-    
+
     /**
-     * Fetches all account details for a given user and caches them in the class fields.
+     * Fetches all account details for a given user and caches them in the class
+     * fields.
+     * 
      * @param username The username to look up.
      * @return true if the user was found and details were loaded, false otherwise.
      */
@@ -736,7 +836,7 @@ public class Database {
         String query = "SELECT * FROM userDB WHERE username = ?";
         try (PreparedStatement pstmt = connection.prepareStatement(query)) {
             pstmt.setString(1, username);
-            ResultSet rs = pstmt.executeQuery();            
+            ResultSet rs = pstmt.executeQuery();
             rs.next();
             currentUsername = rs.getString(2);
             currentPassword = rs.getString(3);
@@ -753,12 +853,13 @@ public class Database {
             return false;
         }
     }
-    
+
     /**
      * Updates a specific role (Admin, Student, or Staff) for a user.
+     * 
      * @param username The username of the account to update.
-     * @param role The role to change ("Admin", "Student", or "Staff").
-     * @param value The new boolean value for the role ("true" or "false").
+     * @param role     The role to change ("Admin", "Student", or "Staff").
+     * @param value    The new boolean value for the role ("true" or "false").
      * @return true if the update was successful, false otherwise.
      */
     public boolean updateUserRole(String username, String role, String value) {
@@ -809,20 +910,50 @@ public class Database {
         }
         return false;
     }
-    
-    public String getCurrentUsername() { return currentUsername;};
-    public String getCurrentPassword() { return currentPassword;};
-    public String getCurrentFirstName() { return currentFirstName;};
-    public String getCurrentMiddleName() { return currentMiddleName;};
-    public String getCurrentLastName() { return currentLastName;};
-    public String getCurrentPreferredFirstName() { return currentPreferredFirstName;};
-    public String getCurrentEmailAddress() { return currentEmailAddress;};
-    public boolean getCurrentAdminRole() { return currentAdminRole;};
-    public boolean getCurrentNewStudent() { return currentNewStudent;};
-    public boolean getCurrentNewStaff() { return currentNewStaff;};
-    
+
+    public String getCurrentUsername() {
+        return currentUsername;
+    };
+
+    public String getCurrentPassword() {
+        return currentPassword;
+    };
+
+    public String getCurrentFirstName() {
+        return currentFirstName;
+    };
+
+    public String getCurrentMiddleName() {
+        return currentMiddleName;
+    };
+
+    public String getCurrentLastName() {
+        return currentLastName;
+    };
+
+    public String getCurrentPreferredFirstName() {
+        return currentPreferredFirstName;
+    };
+
+    public String getCurrentEmailAddress() {
+        return currentEmailAddress;
+    };
+
+    public boolean getCurrentAdminRole() {
+        return currentAdminRole;
+    };
+
+    public boolean getCurrentNewStudent() {
+        return currentNewStudent;
+    };
+
+    public boolean getCurrentNewStaff() {
+        return currentNewStaff;
+    };
+
     /**
      * Deletes a user from the database.
+     * 
      * @param username The username of the account to be deleted.
      */
     public void deleteUser(String username) {
@@ -833,10 +964,12 @@ public class Database {
         } catch (SQLException e) {
             e.printStackTrace();
         }
-    }   
+    }
 
     /**
-     * Dumps the entire content of the user table to the console for debugging purposes.
+     * Dumps the entire content of the user table to the console for debugging
+     * purposes.
+     * 
      * @throws SQLException if a database access error occurs.
      */
     public void dump() throws SQLException {
@@ -844,12 +977,12 @@ public class Database {
         ResultSet resultSet = statement.executeQuery(query);
         ResultSetMetaData meta = resultSet.getMetaData();
         while (resultSet.next()) {
-        for (int i = 0; i < meta.getColumnCount(); i++) {
-        System.out.println(
-        meta.getColumnLabel(i + 1) + ": " +
-                resultSet.getString(i + 1));
-        }
-        System.out.println();
+            for (int i = 0; i < meta.getColumnCount(); i++) {
+                System.out.println(
+                        meta.getColumnLabel(i + 1) + ": " +
+                                resultSet.getString(i + 1));
+            }
+            System.out.println();
         }
         resultSet.close();
     }
@@ -858,21 +991,25 @@ public class Database {
      * Closes the database statement and connection resources.
      */
     public void closeConnection() {
-        try{ 
-            if(statement!=null) statement.close(); 
-        } catch(SQLException se2) { 
+        try {
+            if (statement != null)
+                statement.close();
+        } catch (SQLException se2) {
             se2.printStackTrace();
-        } 
-        try { 
-            if(connection!=null) connection.close(); 
-        } catch(SQLException se){ 
-            se.printStackTrace(); 
-        } 
+        }
+        try {
+            if (connection != null)
+                connection.close();
+        } catch (SQLException se) {
+            se.printStackTrace();
+        }
     }
 
     /**
      * Retrieves all users from the database and formats them for display in a list.
-     * @return A List of UserForList objects, each containing formatted user information.
+     * 
+     * @return A List of UserForList objects, each containing formatted user
+     *         information.
      */
     public List<UserForList> getAllUsersForList() {
         List<UserForList> userList = new ArrayList<>();
@@ -881,7 +1018,8 @@ public class Database {
             ResultSet rs = pstmt.executeQuery();
             while (rs.next()) {
                 String username = rs.getString("userName");
-                String name = rs.getString("firstName") + " " + rs.getString("middleName") + " " + rs.getString("lastName");
+                String name = rs.getString("firstName") + " " + rs.getString("middleName") + " "
+                        + rs.getString("lastName");
                 String email = rs.getString("emailAddress");
                 String roles = "";
                 if (rs.getBoolean("adminRole")) {
@@ -905,6 +1043,7 @@ public class Database {
 
     /**
      * Creates a new post in the database.
+     * 
      * @param post The Post object to be created.
      */
     public void create(Post post) {
@@ -920,8 +1059,8 @@ public class Database {
             e.printStackTrace();
         }
     }
-    
-    public void create(Reply reply) {         // overload
+
+    public void create(Reply reply) { // overload
         String sql = "INSERT INTO repliesDB (postID, authorUsername, content, timestamp) VALUES (?, ?, ?, ?)";
         try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
             pstmt.setInt(1, reply.getPostID());
@@ -936,15 +1075,20 @@ public class Database {
 
     /**
      * Retrieves all posts from the database that have not been "soft deleted".
+     * 
      * @param username The username of the current user, to determine read status.
      * @return A List of Post objects.
      */
     public List<Post> getAllPosts(String username) {
         List<Post> posts = new ArrayList<>();
         boolean viewerIsStaff = false;
-        try { viewerIsStaff = isUserStaff(username); } catch (Exception ignored) {}
+        try {
+            viewerIsStaff = isUserStaff(username);
+        } catch (Exception ignored) {
+        }
 
-        // If viewer is staff, counts include all replies. Otherwise restrict to replies.
+        // If viewer is staff, counts include all replies. Otherwise restrict to
+        // replies.
         String replyCountSubquery;
         String unreadCountSubquery;
 
@@ -952,16 +1096,15 @@ public class Database {
             replyCountSubquery = "(SELECT COUNT(*) FROM repliesDB r WHERE r.postID = p.postID)";
             unreadCountSubquery = "(SELECT COUNT(*) FROM repliesDB r LEFT JOIN viewed_replies vr ON r.replyID = vr.replyID AND vr.username = ? WHERE r.postID = p.postID AND vr.replyID IS NULL)";
         } else {
-            replyCountSubquery =
-                "(SELECT COUNT(*) FROM repliesDB r WHERE r.postID = p.postID AND " +
-                " (r.visibility = 'public' OR (r.visibility = 'private' AND r.recipient = ?) OR r.authorUsername = ?) )";
+            replyCountSubquery = "(SELECT COUNT(*) FROM repliesDB r WHERE r.postID = p.postID AND " +
+                    " (r.visibility = 'public' OR (r.visibility = 'private' AND r.recipient = ?) OR r.authorUsername = ?) )";
 
-            unreadCountSubquery =
-                "(SELECT COUNT(*) FROM repliesDB r LEFT JOIN viewed_replies vr ON r.replyID = vr.replyID AND vr.username = ? " +
-                " WHERE r.postID = p.postID AND vr.replyID IS NULL AND " +
-                " (r.visibility = 'public' OR (r.visibility = 'private' AND r.recipient = ?) OR r.authorUsername = ?) )";
+            unreadCountSubquery = "(SELECT COUNT(*) FROM repliesDB r LEFT JOIN viewed_replies vr ON r.replyID = vr.replyID AND vr.username = ? "
+                    +
+                    " WHERE r.postID = p.postID AND vr.replyID IS NULL AND " +
+                    " (r.visibility = 'public' OR (r.visibility = 'private' AND r.recipient = ?) OR r.authorUsername = ?) )";
         }
-        
+
         String sql = "SELECT p.*, (v.postID IS NOT NULL) AS viewed, " +
                 replyCountSubquery + " AS replyCount, " +
                 unreadCountSubquery + " AS unreadReplyCount " +
@@ -969,99 +1112,106 @@ public class Database {
                 "LEFT JOIN viewed_posts v ON p.postID = v.postID AND v.username = ? " +
                 "ORDER BY p.timestamp DESC";
 
-   try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
-       int idx = 1;
-       if (viewerIsStaff) {
-           // unreadCount vr.username
-           pstmt.setString(idx++, username);
-           // join v.username
-           pstmt.setString(idx++, username);
-       } else {
-           // replyCount: recipient, author
-           pstmt.setString(idx++, username); // for (r.recipient = ?)
-           pstmt.setString(idx++, username); // for r.authorUsername = ?
-           // unreadCount: vr.username, recipient, author
-           pstmt.setString(idx++, username); // vr.username
-           pstmt.setString(idx++, username); // recipient
-           pstmt.setString(idx++, username); // author
-           // join v.username
-           pstmt.setString(idx++, username);
-       }
+        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+            int idx = 1;
+            if (viewerIsStaff) {
+                // unreadCount vr.username
+                pstmt.setString(idx++, username);
+                // join v.username
+                pstmt.setString(idx++, username);
+            } else {
+                // replyCount: recipient, author
+                pstmt.setString(idx++, username); // for (r.recipient = ?)
+                pstmt.setString(idx++, username); // for r.authorUsername = ?
+                // unreadCount: vr.username, recipient, author
+                pstmt.setString(idx++, username); // vr.username
+                pstmt.setString(idx++, username); // recipient
+                pstmt.setString(idx++, username); // author
+                // join v.username
+                pstmt.setString(idx++, username);
+            }
 
-       ResultSet rs = pstmt.executeQuery();
-       while (rs.next()) {
-           int postID = rs.getInt("postID");
-           String author = rs.getString("authorUsername");
-           String title = rs.getString("title");
-           String content = rs.getString("content");
-           String thread = rs.getString("thread");
-           boolean deleted = rs.getBoolean("deleted");
-           boolean viewed = rs.getBoolean("viewed");
-           int replyCount = rs.getInt("replyCount");
-           int unreadReplyCount = rs.getInt("unreadReplyCount");
+            ResultSet rs = pstmt.executeQuery();
+            while (rs.next()) {
+                int postID = rs.getInt("postID");
+                String author = rs.getString("authorUsername");
+                String title = rs.getString("title");
+                String content = rs.getString("content");
+                String thread = rs.getString("thread");
+                boolean deleted = rs.getBoolean("deleted");
+                boolean viewed = rs.getBoolean("viewed");
+                int replyCount = rs.getInt("replyCount");
+                int unreadReplyCount = rs.getInt("unreadReplyCount");
 
-           // read legacy 'visible' flag if present; default true when missing
-           boolean visible = true;
-           try {
-               visible = rs.getBoolean("visible");
-           } catch (SQLException ignore) {
-               // column missing in older DB schema -> assume visible
-           }
+                // read legacy 'visible' flag if present; default true when missing
+                boolean visible = true;
+                try {
+                    visible = rs.getBoolean("visible");
+                } catch (SQLException ignore) {
+                    // column missing in older DB schema -> assume visible
+                }
 
-           // fetch most recent moderation action for this post (if any)
-           String actionUser = null;
-           String actionReason = null;
-           LocalDateTime actionTimestamp = null;
-           try {
-               String modSql = "SELECT username, action, reason, timestamp FROM moderation_log WHERE postID = ? ORDER BY timestamp DESC LIMIT 1";
-               try (PreparedStatement modStmt = connection.prepareStatement(modSql)) {
-                   modStmt.setInt(1, postID);
-                   try (ResultSet mrs = modStmt.executeQuery()) {
-                       if (mrs.next()) {
-                           actionUser = mrs.getString("username");
-                           actionReason = mrs.getString("reason");
-                           Timestamp t = mrs.getTimestamp("timestamp");
-                           if (t != null) actionTimestamp = t.toLocalDateTime();
-                       }
-                   }
-               }
-           } catch (SQLException ignore) {
-               // moderation_log might not exist on some DBs - that's fine
-           }
+                // fetch most recent moderation action for this post (if any)
+                String actionUser = null;
+                String actionReason = null;
+                LocalDateTime actionTimestamp = null;
+                try {
+                    String modSql = "SELECT username, action, reason, timestamp FROM moderation_log WHERE postID = ? ORDER BY timestamp DESC LIMIT 1";
+                    try (PreparedStatement modStmt = connection.prepareStatement(modSql)) {
+                        modStmt.setInt(1, postID);
+                        try (ResultSet mrs = modStmt.executeQuery()) {
+                            if (mrs.next()) {
+                                actionUser = mrs.getString("username");
+                                actionReason = mrs.getString("reason");
+                                Timestamp t = mrs.getTimestamp("timestamp");
+                                if (t != null)
+                                    actionTimestamp = t.toLocalDateTime();
+                            }
+                        }
+                    }
+                } catch (SQLException ignore) {
+                    // moderation_log might not exist on some DBs - that's fine
+                }
 
-           // Construct Post. Use the constructor that includes moderation metadata and visibility.
-           Post post = new Post(
-               postID,
-               author,
-               title,
-               content,
-               thread,
-               deleted,
-               viewed,
-               replyCount,
-               unreadReplyCount,
-               visible,
-               actionUser,
-               actionReason,
-               actionTimestamp
-           );
-	
-	           posts.add(post);
-	       }
-	   } catch (SQLException e) {
-	       e.printStackTrace();
-	   }
-	   return posts;
-	}
+                // Construct Post. Use the constructor that includes moderation metadata and
+                // visibility.
+                Post post = new Post(
+                        postID,
+                        author,
+                        title,
+                        content,
+                        thread,
+                        deleted,
+                        viewed,
+                        replyCount,
+                        unreadReplyCount,
+                        visible,
+                        actionUser,
+                        actionReason,
+                        actionTimestamp);
 
-    
+                posts.add(post);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return posts;
+    }
+
     /*****
-     * <p> Method: String getPostAuthor(int postID) </p>
+     * <p>
+     * Method: String getPostAuthor(int postID)
+     * </p>
      * 
-     * <p> Description: This method retrieves the author’s username for a specific post using the
-     * post ID. If the post does not exist or an SQL exception occurs, the method returns null. </p>
+     * <p>
+     * Description: This method retrieves the author’s username for a specific post
+     * using the
+     * post ID. If the post does not exist or an SQL exception occurs, the method
+     * returns null.
+     * </p>
      * 
-     * @param postID The unique identifier for the post whose author's username is to be retrieved.
+     * @param postID The unique identifier for the post whose author's username is
+     *               to be retrieved.
      * 
      * @return A String with the author’s username for the given postID
      */
@@ -1078,17 +1228,24 @@ public class Database {
         }
         return null;
     }
-    
+
     /*****
-     * <p> Method: boolean isUserStaff(String username) </p>
+     * <p>
+     * Method: boolean isUserStaff(String username)
+     * </p>
      * 
-     * <p> Description: This method checks whether a specified user has been assigned the staff role.
+     * <p>
+     * Description: This method checks whether a specified user has been assigned
+     * the staff role.
      * This allows the system to verify a user’s authorization level
-     * when performing staff-specific actions. </p>
+     * when performing staff-specific actions.
+     * </p>
      * 
-     * @param username The username of the user whose staff role status is to be checked.
+     * @param username The username of the user whose staff role status is to be
+     *                 checked.
      * 
-     * @return A boolean value indicating whether the user has a staff role (TRUE if staff, FALSE otherwise).
+     * @return A boolean value indicating whether the user has a staff role (TRUE if
+     *         staff, FALSE otherwise).
      */
     public boolean isUserStaff(String username) {
         String sql = "SELECT newStaff FROM userDB WHERE userName = ?";
@@ -1103,50 +1260,49 @@ public class Database {
         }
         return false;
     }
-    
-    
+
     /**
-     * Searches for posts based on a keyword and an optional thread, excluding "soft deleted" posts.
-     * @param keyword The keyword to search for in post titles and content.
-     * @param thread The thread to filter by. If "All Threads", no thread filter is applied.
+     * Searches for posts based on a keyword and an optional thread, excluding "soft
+     * deleted" posts.
+     * 
+     * @param keyword  The keyword to search for in post titles and content.
+     * @param thread   The thread to filter by. If "All Threads", no thread filter
+     *                 is applied.
      * @param username The username of the current user, to determine read status.
      * @return A List of matching Post objects.
      */
     public List<Post> searchPosts(String keyword, String thread, String username) {
         List<Post> posts = new ArrayList<>();
         boolean viewerIsStaff = false;
-        try { 
-            viewerIsStaff = isUserStaff(username); 
-        } catch (Exception ignored) {}
+        try {
+            viewerIsStaff = isUserStaff(username);
+        } catch (Exception ignored) {
+        }
 
         String replyCountSubquery;
         String unreadCountSubquery;
 
         if (viewerIsStaff) {
             replyCountSubquery = "(SELECT COUNT(*) FROM repliesDB r WHERE r.postID = p.postID)";
-            unreadCountSubquery =
-                "(SELECT COUNT(*) FROM repliesDB r LEFT JOIN viewed_replies vr " +
-                "ON r.replyID = vr.replyID AND vr.username = ? " +
-                "WHERE r.postID = p.postID AND vr.replyID IS NULL)";
+            unreadCountSubquery = "(SELECT COUNT(*) FROM repliesDB r LEFT JOIN viewed_replies vr " +
+                    "ON r.replyID = vr.replyID AND vr.username = ? " +
+                    "WHERE r.postID = p.postID AND vr.replyID IS NULL)";
         } else {
-            replyCountSubquery =
-                "(SELECT COUNT(*) FROM repliesDB r WHERE r.postID = p.postID AND " +
-                "((r.visible = TRUE) OR r.visibility = 'public' OR (r.visibility = 'private' AND r.recipient = ?) OR r.authorUsername = ?) )";
+            replyCountSubquery = "(SELECT COUNT(*) FROM repliesDB r WHERE r.postID = p.postID AND " +
+                    "((r.visible = TRUE) OR r.visibility = 'public' OR (r.visibility = 'private' AND r.recipient = ?) OR r.authorUsername = ?) )";
 
-            unreadCountSubquery =
-                "(SELECT COUNT(*) FROM repliesDB r LEFT JOIN viewed_replies vr " +
-                "ON r.replyID = vr.replyID AND vr.username = ? " +
-                "WHERE r.postID = p.postID AND vr.replyID IS NULL AND " +
-                "((r.visible = TRUE) OR r.visibility = 'public' OR (r.visibility = 'private' AND r.recipient = ?) OR r.authorUsername = ?) )";
+            unreadCountSubquery = "(SELECT COUNT(*) FROM repliesDB r LEFT JOIN viewed_replies vr " +
+                    "ON r.replyID = vr.replyID AND vr.username = ? " +
+                    "WHERE r.postID = p.postID AND vr.replyID IS NULL AND " +
+                    "((r.visible = TRUE) OR r.visibility = 'public' OR (r.visibility = 'private' AND r.recipient = ?) OR r.authorUsername = ?) )";
         }
 
         String sql = "SELECT p.*, (v.postID IS NOT NULL) AS viewed, " +
-                     replyCountSubquery + " AS replyCount, " +
-                     unreadCountSubquery + " AS unreadReplyCount " +
-                     "FROM postsDB p " +
-                     "LEFT JOIN viewed_posts v ON p.postID = v.postID AND v.username = ? " +
-                     "WHERE (LOWER(p.title) LIKE LOWER(?) OR LOWER(p.content) LIKE LOWER(?))";
-
+                replyCountSubquery + " AS replyCount, " +
+                unreadCountSubquery + " AS unreadReplyCount " +
+                "FROM postsDB p " +
+                "LEFT JOIN viewed_posts v ON p.postID = v.postID AND v.username = ? " +
+                "WHERE (LOWER(p.title) LIKE LOWER(?) OR LOWER(p.content) LIKE LOWER(?))";
         if (!"All Threads".equals(thread)) {
             sql += " AND p.thread = ?";
         }
@@ -1214,7 +1370,8 @@ public class Database {
                                     actionUser = mrs.getString("username");
                                     actionReason = mrs.getString("reason");
                                     Timestamp t = mrs.getTimestamp("timestamp");
-                                    if (t != null) actionTimestamp = t.toLocalDateTime();
+                                    if (t != null)
+                                        actionTimestamp = t.toLocalDateTime();
                                 }
                             }
                         }
@@ -1223,10 +1380,9 @@ public class Database {
                     }
 
                     Post post = new Post(
-                        postID, author, title, content, postThread,
-                        deleted, viewed, replyCount, unreadReplyCount,
-                        visible, actionUser, actionReason, actionTimestamp
-                    );
+                            postID, author, title, content, postThread,
+                            deleted, viewed, replyCount, unreadReplyCount,
+                            visible, actionUser, actionReason, actionTimestamp);
                     posts.add(post);
                 }
             }
@@ -1237,9 +1393,9 @@ public class Database {
         return posts;
     }
 
-
     /**
      * Updates an existing post in the database.
+     * 
      * @param post The Post object with updated information.
      */
     public void update(Post post) {
@@ -1256,6 +1412,7 @@ public class Database {
 
     /**
      * "Soft deletes" a post by setting its `deleted` flag to TRUE.
+     * 
      * @param postID The ID of the post to delete.
      */
     public void deletePost(int postID) {
@@ -1267,14 +1424,15 @@ public class Database {
             e.printStackTrace();
         }
     }
-    
-    public void delete(Post post) {           // overload
+
+    public void delete(Post post) { // overload
         deletePost(post.getPostID());
     }
 
     /**
      * Marks a post as read for a specific user.
-     * @param postID The ID of the post.
+     * 
+     * @param postID   The ID of the post.
      * @param username The username of the user.
      */
     public void markPostAsRead(int postID, String username) {
@@ -1287,16 +1445,15 @@ public class Database {
             e.printStackTrace();
         }
     }
-    
-    
-    
+
     // Moderation and Visibility Control for Posts
-    
+
     /**
      * Hides post so that only authorized users can see it.
-     * @param postID The ID of the post that needs to be fetched.
+     * 
+     * @param postID   The ID of the post that needs to be fetched.
      * @param username username of who is hiding the post.
-     * @param reason The reason why the post is being hidden.
+     * @param reason   The reason why the post is being hidden.
      */
     public void hidePost(int postID, String username, String reason) {
         String sql = "UPDATE postsDB SET visible = FALSE WHERE postID = ?";
@@ -1308,12 +1465,13 @@ public class Database {
             e.printStackTrace();
         }
     }
-    
+
     /**
      * Unhides post so that only authorized users can see it.
-     * @param postID The ID of the post that needs to be fetched.
+     * 
+     * @param postID   The ID of the post that needs to be fetched.
      * @param username username of who is hiding the post.
-     * @param reason The reason why the post is being hidden.
+     * @param reason   The reason why the post is being hidden.
      */
     public void unhidePost(int postID, String username, String reason) {
         String sql = "UPDATE postsDB SET visible = TRUE WHERE postID = ?";
@@ -1325,24 +1483,24 @@ public class Database {
             e.printStackTrace();
         }
     }
-    
+
     /**
      * Flags post and logs it.
-     * @param postID The ID of the post that needs to be fetched.
+     * 
+     * @param postID   The ID of the post that needs to be fetched.
      * @param username username of who is hiding the post.
-     * @param reason The reason why the post is being hidden.
+     * @param reason   The reason why the post is being hidden.
      */
     public void flagPost(int postID, String username, String reason) {
         // This does not change visibility, but just records the issue
         logModerationAction(postID, username, "FLAG_POST", reason);
     }
-    
-    
 
     // --- NEW DATABASE METHODS FOR REPLIES (CRUD) ---
 
     /**
      * Creates a new reply in the database.
+     * 
      * @param reply The Reply object to be created.
      */
     public boolean createReply(Reply reply) {
@@ -1364,14 +1522,15 @@ public class Database {
 
     /**
      * Retrieves all replies for a specific post.
+     * 
      * @param postID The ID of the post whose replies are to be fetched.
      * @return A List of Reply objects.
      */
     public List<Reply> getRepliesForPost(int postID, String username) {
         List<Reply> replies = new ArrayList<>();
         String sql = "SELECT r.*, vr.replyID IS NOT NULL AS viewed FROM repliesDB r "
-                   + "LEFT JOIN viewed_replies vr ON r.replyID = vr.replyID AND vr.username = ? "
-                   + "WHERE r.postID = ? ORDER BY r.timestamp ASC";
+                + "LEFT JOIN viewed_replies vr ON r.replyID = vr.replyID AND vr.username = ? "
+                + "WHERE r.postID = ? ORDER BY r.timestamp ASC";
         try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
             pstmt.setString(1, username);
             pstmt.setInt(2, postID);
@@ -1393,8 +1552,14 @@ public class Database {
                 // Newer visibility/recipient model (may not exist)
                 String visibility = null;
                 String recipient = null;
-                try { visibility = rs.getString("visibility"); } catch (SQLException ignore) {}
-                try { recipient = rs.getString("recipient"); } catch (SQLException ignore) {}
+                try {
+                    visibility = rs.getString("visibility");
+                } catch (SQLException ignore) {
+                }
+                try {
+                    recipient = rs.getString("recipient");
+                } catch (SQLException ignore) {
+                }
 
                 // Keep moderation metadata null (same as original A)
                 String actionUser = null;
@@ -1406,9 +1571,10 @@ public class Database {
                     // Use the private-reply constructor from original B
                     reply = new Reply(replyID, postID, author, content, "private", recipient);
                 } else {
-                    // Use the legacy constructor from original A (visible + null moderation metadata)
+                    // Use the legacy constructor from original A (visible + null moderation
+                    // metadata)
                     reply = new Reply(replyID, postID, author, content,
-                                      visible, actionUser, actionReason, actionTimestamp);
+                            visible, actionUser, actionReason, actionTimestamp);
                 }
 
                 reply.setViewed(viewed);
@@ -1420,12 +1586,12 @@ public class Database {
         return replies;
     }
 
-
     /**
      * Updates an existing reply in the database.
+     * 
      * @param reply The Reply object with updated information.
      */
-    public void update(Reply reply) {  //overload
+    public void update(Reply reply) { // overload
         String sql = "UPDATE repliesDB SET content = ? WHERE replyID = ?";
         try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
             pstmt.setString(1, reply.getContent());
@@ -1438,6 +1604,7 @@ public class Database {
 
     /**
      * Deletes a reply from the database.
+     * 
      * @param replyID The ID of the reply to delete.
      */
     public void deleteReply(int replyID) {
@@ -1449,14 +1616,15 @@ public class Database {
             e.printStackTrace();
         }
     }
-    
-    public void delete(Reply reply) {         // overload
+
+    public void delete(Reply reply) { // overload
         deleteReply(reply.getReplyID());
     }
 
     /**
      * Marks a reply as read for a specific user.
-     * @param replyID The ID of the reply.
+     * 
+     * @param replyID  The ID of the reply.
      * @param username The username of the user.
      */
     public void markReplyAsRead(int replyID, String username) {
@@ -1468,17 +1636,17 @@ public class Database {
         } catch (SQLException e) {
             e.printStackTrace();
         }
-    }
-    
-    
+    }<<<<<<<HEAD
+
     // Moderation and Visibility Control for Posts
-    
+
     /**
      * Hides reply so that only authorized users can see it.
-     * @param replyID The ID of the reply
-     * @param postID The ID of the post whose replies needs to be fetched.
+     * 
+     * @param replyID  The ID of the reply
+     * @param postID   The ID of the post whose replies needs to be fetched.
      * @param username The username of who is hiding the post.
-     * @param reason The reason why the post is being hidden.
+     * @param reason   The reason why the post is being hidden.
      */
     public void hideReply(int replyID, int postID, String username, String reason) {
         String sql = "UPDATE repliesDB SET visible = FALSE WHERE replyID = ?";
@@ -1490,7 +1658,7 @@ public class Database {
             e.printStackTrace();
         }
     }
-    
+
     /**
      * Unhides reply so that only authorized users can see it.
      * @param replyID The ID of the reply
@@ -1504,33 +1672,51 @@ public class Database {
             pstmt.setInt(1, replyID);
             pstmt.executeUpdate();
             logModerationAction(postID, username, "UNHIDE_REPLY", reason);
+=======
+
+    // --- ADMIN REQUESTS OPERATIONS ---
+
+    public void createAdminRequest(String requester, String description) {
+        String sql = "INSERT INTO admin_requests (requester, description, status, adminComments, created_at, updated_at) "
+                + "VALUES (?, ?, 'Open', '', ?, ?)";
+        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+            pstmt.setString(1, requester);
+            pstmt.setString(2, description);
+            Timestamp now = Timestamp.from(Instant.now());
+            pstmt.setTimestamp(3, now);
+            pstmt.setTimestamp(4, now);
+            pstmt.executeUpdate();
+>>>>>>> 511b073 (Implement Admin Requests, Thread Management, and Bug Fixes)
         } catch (SQLException e) {
             e.printStackTrace();
         }
     }
 
+    <<<<<<<HEAD
+
     /**
      * Flags reply and logs moderation.
-     * @param replyID The ID of the reply
-     * @param postID The ID of the post whose replies needs to be fetched.
+     * 
+     * @param replyID  The ID of the reply
+     * @param postID   The ID of the post whose replies needs to be fetched.
      * @param username The username of who is hiding the post.
-     * @param reason The reason why the post is being hidden.
+     * @param reason   The reason why the post is being hidden.
      */
     public void flagReply(int replyID, int postID, String username, String reason) {
         logModerationAction(postID, username, "FLAG_REPLY", reason);
     }
-    
-    
-    
- // OLD
+
+    // OLD
     /**
      * Logs a moderation action performed on a post.
      *
-     * Each log entry stores who did it, what they did, why they did it, and when it happened.
+     * Each log entry stores who did it, what they did, why they did it, and when it
+     * happened.
      *
      * @param postID   The ID of the post being modified.
      * @param username The username performing the action.
-     * @param action   The action type, e.g. "HIDE", "UNHIDE", "FLAG_POST", "FLAG_REPLY".
+     * @param action   The action type, e.g. "HIDE", "UNHIDE", "FLAG_POST",
+     *                 "FLAG_REPLY".
      * @param reason   The reason for the action (may be null for UNHIDE).
      */
     public void logPostVisibilityAction(int postID, String username, String action, String reason) {
@@ -1540,14 +1726,20 @@ public class Database {
 
     // NEW
     /**
-     * <p> Method: void logModerationAction(int postID, String username, String action, String reason) </p>
+     * <p>
+     * Method: void logModerationAction(int postID, String username, String action,
+     * String reason)
+     * </p>
      *
-     * <p> Description: Writes a row to the moderation_log table to track moderation outcomes
-     * and prints a concise trace line to the console. </p>
+     * <p>
+     * Description: Writes a row to the moderation_log table to track moderation
+     * outcomes
+     * and prints a concise trace line to the console.
+     * </p>
      */
     private void logModerationAction(int postID, String username, String action, String reason) {
         String sql = "INSERT INTO moderation_log (postID, username, action, reason, timestamp) "
-                   + "VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)";
+                + "VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)";
         try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
             pstmt.setInt(1, postID);
             pstmt.setString(2, username);
@@ -1557,12 +1749,11 @@ public class Database {
 
             // Print to Console
             System.out.println(
-                "[MODERATION] postID=" + postID +
-                " user=" + username +
-                " action=" + action +
-                " reason=" + (reason == null ? "" : reason) +
-                " rowsInserted=" + rows
-            );
+                    "[MODERATION] postID=" + postID +
+                            " user=" + username +
+                            " action=" + action +
+                            " reason=" + (reason == null ? "" : reason) +
+                            " rowsInserted=" + rows);
         } catch (SQLException e) {
             e.printStackTrace();
         }
@@ -1600,16 +1791,52 @@ public class Database {
                 );
             }
             System.out.println("=========================================");
+=======
+
+    public List<entityClasses.AdminRequest> getAllAdminRequests() {
+        List<entityClasses.AdminRequest> list = new ArrayList<>();
+        String sql = "SELECT * FROM admin_requests ORDER BY updated_at DESC";
+        try (PreparedStatement pstmt = connection.prepareStatement(sql);
+                ResultSet rs = pstmt.executeQuery()) {
+            while (rs.next()) {
+                list.add(new entityClasses.AdminRequest(
+                        rs.getInt("requestID"),
+                        rs.getString("requester"),
+                        rs.getString("description"),
+                        rs.getString("status"),
+                        rs.getString("adminComments"),
+                        rs.getTimestamp("created_at").toLocalDateTime(),
+                        rs.getTimestamp("updated_at").toLocalDateTime()));
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return list;
+    }
+
+    public void updateAdminRequest(entityClasses.AdminRequest req) {
+        String sql = "UPDATE admin_requests SET description = ?, status = ?, adminComments = ?, updated_at = ? WHERE requestID = ?";
+        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+            pstmt.setString(1, req.getDescription());
+            pstmt.setString(2, req.getStatus());
+            pstmt.setString(3, req.getAdminComments());
+            pstmt.setTimestamp(4, Timestamp.from(Instant.now()));
+            pstmt.setInt(5, req.getRequestID());
+            pstmt.executeUpdate();
+>>>>>>> 511b073 (Implement Admin Requests, Thread Management, and Bug Fixes)
         } catch (SQLException e) {
             e.printStackTrace();
         }
     }
 
-    
+    <<<<<<<HEAD
+
     // For Testing Purposes Only
-    
+
     // Declares 3 types of roles
-    public enum Role { ADMIN, STUDENT, STAFF }
+    public enum Role {
+        ADMIN, STUDENT, STAFF
+    }
 
     public java.util.EnumSet<Role> getRoles(entityClasses.User user) {
         java.util.EnumSet<Role> roles = java.util.EnumSet.noneOf(Role.class);
@@ -1617,5 +1844,110 @@ public class Database {
         if (loginStudent(user)) roles.add(Role.STUDENT);
         if (loginStaff(user))   roles.add(Role.STAFF);
         return roles;
+=======
+    // --- THREAD MANAGEMENT OPERATIONS ---
+
+    public void createThread(String title) {
+        String sql = "INSERT INTO discussion_threads (title, visible, created_at) VALUES (?, TRUE, ?)";
+        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+            pstmt.setString(1, title);
+            pstmt.setTimestamp(2, Timestamp.from(Instant.now()));
+            pstmt.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public List<entityClasses.DiscussionThread> getAllThreads() {
+        List<entityClasses.DiscussionThread> list = new ArrayList<>();
+        String sql = "SELECT * FROM discussion_threads ORDER BY created_at ASC";
+        try (PreparedStatement pstmt = connection.prepareStatement(sql);
+                ResultSet rs = pstmt.executeQuery()) {
+            while (rs.next()) {
+                list.add(new entityClasses.DiscussionThread(
+                        rs.getString("title"),
+                        rs.getBoolean("visible"),
+                        rs.getTimestamp("created_at").toLocalDateTime()));
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return list;
+    }
+
+    // For Students: Only visible threads
+    public List<String> getVisibleThreadTitles() {
+        List<String> list = new ArrayList<>();
+        list.add("All Threads");
+        String sql = "SELECT title FROM discussion_threads WHERE visible = TRUE ORDER BY created_at ASC";
+        try (PreparedStatement pstmt = connection.prepareStatement(sql);
+                ResultSet rs = pstmt.executeQuery()) {
+            while (rs.next()) {
+                list.add(rs.getString("title"));
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return list;
+    }
+
+    // For Staff/Admin: All threads (including hidden)
+    public List<String> getAllThreadTitles() {
+        List<String> list = new ArrayList<>();
+        list.add("All Threads");
+        String sql = "SELECT title FROM discussion_threads ORDER BY created_at ASC";
+        try (PreparedStatement pstmt = connection.prepareStatement(sql);
+                ResultSet rs = pstmt.executeQuery()) {
+            while (rs.next()) {
+                list.add(rs.getString("title"));
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return list;
+    }
+
+    public void updateThread(String oldTitle, String newTitle, boolean visible) {
+        String sqlThread = "UPDATE discussion_threads SET title = ?, visible = ? WHERE title = ?";
+        String sqlPosts = "UPDATE postsDB SET thread = ? WHERE thread = ?";
+
+        try {
+            connection.setAutoCommit(false);
+
+            try (PreparedStatement pstmt = connection.prepareStatement(sqlThread)) {
+                pstmt.setString(1, newTitle);
+                pstmt.setBoolean(2, visible);
+                pstmt.setString(3, oldTitle);
+                pstmt.executeUpdate();
+            }
+
+            if (!oldTitle.equals(newTitle)) {
+                try (PreparedStatement pstmt = connection.prepareStatement(sqlPosts)) {
+                    pstmt.setString(1, newTitle);
+                    pstmt.setString(2, oldTitle);
+                    pstmt.executeUpdate();
+                }
+            }
+
+            connection.commit();
+            connection.setAutoCommit(true);
+        } catch (SQLException e) {
+            e.printStackTrace();
+            try {
+                connection.rollback();
+            } catch (SQLException ex) {
+            }
+        }
+    }
+
+    public void deleteThread(String title) {
+        String sql = "DELETE FROM discussion_threads WHERE title = ?";
+        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+            pstmt.setString(1, title);
+            pstmt.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+>>>>>>> 511b073 (Implement Admin Requests, Thread Management, and Bug Fixes)
     }
 }
