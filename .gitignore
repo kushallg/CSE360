@@ -4,3 +4,4 @@
 # Ignore compiled output directories
 bin/
 .DS_Store
+TP1/target/
