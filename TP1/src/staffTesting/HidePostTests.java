@@ -6,17 +6,21 @@ import java.time.LocalDateTime;
 import java.util.EnumSet;
 
 import org.junit.Before;
+import static org.junit.Assert.*;
 import org.junit.Test;
 
-import database.Database;           // for Database.Role enum
+import database.Database; // for Database.Role enum
 import entityClasses.Post;
 import entityClasses.Reply;
 
 /**
  * HidePostTests
  *
- * <p> Automated JUnit 4 tests to test that staff can hide posts and replies and for verifying post/reply visibility and moderation behavior
- * using role sets directly. </p>
+ * <p>
+ * Automated JUnit 4 tests to test that staff can hide posts and replies and for
+ * verifying post/reply visibility and moderation behavior
+ * using role sets directly.
+ * </p>
  */
 public class HidePostTests {
 
@@ -32,8 +36,8 @@ public class HidePostTests {
     public void setUp() throws Exception {
         ts = LocalDateTime.of(2025, 11, 11, 10, 0);
         STUDENT = EnumSet.of(Database.Role.STUDENT);
-        STAFF   = EnumSet.of(Database.Role.STAFF);
-        ADMIN   = EnumSet.of(Database.Role.ADMIN);
+        STAFF = EnumSet.of(Database.Role.STAFF);
+        ADMIN = EnumSet.of(Database.Role.ADMIN);
         NOROLES = EnumSet.noneOf(Database.Role.class);
 
         System.out.println("\n======================================");
@@ -47,17 +51,20 @@ public class HidePostTests {
     /**
      * testVisiblePost_NoChange()
      *
-     * <p>Section: Visible posts remain viewable to all users. </p>
+     * <p>
+     * Section: Visible posts remain viewable to all users.
+     * </p>
      *
-     * <p>Checks:A visible post returns its original content for any role. </p> 
+     * <p>
+     * Checks:A visible post returns its original content for any role.
+     * </p>
      */
     @Test
     public void testVisiblePost_NoChange() {
         Post post = new Post(
-            1, "Author1", "Visible Title", "Visible Content", "General",
-            false, false, 0, 0,
-            true, "staffUser", "routine check", ts
-        );
+                1, "Author1", "Visible Title", "Visible Content", "General",
+                false, false, 0, 0,
+                true, "staffUser", "routine check", ts);
 
         assertTrue(post.isVisible());
         assertEquals("Visible Content", Post.getDisplayContent(post, STUDENT));
@@ -70,15 +77,16 @@ public class HidePostTests {
     /**
      * testHiddenPost_StudentView()
      *
-     * <p>Section: Hidden posts are masked for Student role. </p>
+     * <p>
+     * Section: Hidden posts are masked for Student role.
+     * </p>
      */
     @Test
     public void testHiddenPost_StudentView() {
         Post post = new Post(
-            2, "Author", "Private Post", "Sensitive Info", "General",
-            false, false, 0, 0,
-            false, "staffAlice", "policy violation", ts
-        );
+                2, "Author", "Private Post", "Sensitive Info", "General",
+                false, false, 0, 0,
+                false, "staffAlice", "policy violation", ts);
 
         assertFalse(post.isVisible());
         String shown = Post.getDisplayContent(post, STUDENT);
@@ -89,16 +97,17 @@ public class HidePostTests {
     /**
      * testHiddenPost_StaffView()
      *
-     * <p>Section: Hidden posts visible to Staff with label. </p>
+     * <p>
+     * Section: Hidden posts visible to Staff with label.
+     * </p>
      */
     @Test
     public void testHiddenPost_StaffView() {
         String body = "Assessment Guidelines";
         Post post = new Post(
-            3, "Author", "Rubric", body, "Assignments",
-            false, false, 0, 0,
-            false, "adminBob", "moderation", ts
-        );
+                3, "Author", "Rubric", body, "Assignments",
+                false, false, 0, 0,
+                false, "adminBob", "moderation", ts);
 
         assertFalse(post.isVisible());
         String shown = Post.getDisplayContent(post, STAFF);
@@ -109,23 +118,23 @@ public class HidePostTests {
     /**
      * testHiddenPost_AdminView()
      *
-     * <p>Section: Hidden posts visible to Admin with label. </p>
+     * <p>
+     * Section: Hidden posts visible to Admin with label.
+     * </p>
      */
     @Test
     public void testHiddenPost_AdminView() {
         String body = "Exam Blueprint";
         Post post = new Post(
-            4, "Author", "Confidential", body, "Exams",
-            false, true, 0, 0,
-            false, "staffAmy", "sensitive info", ts
-        );
+                4, "Author", "Confidential", body, "Exams",
+                false, true, 0, 0,
+                false, "staffAmy", "sensitive info", ts);
 
         assertFalse(post.isVisible());
         String shown = Post.getDisplayContent(post, ADMIN);
         assertEquals(body + " (Hidden by Staff)", shown);
         System.out.println("PASS: testHiddenPost_AdminView -> Admins see labeled hidden content.");
     }
-
 
     // ---------------------------------------------------------------------
     // Reply tests: same role-based behavior
@@ -134,15 +143,16 @@ public class HidePostTests {
     /**
      * testVisibleReply_NoChange()
      *
-     * <p>Section: Visible replies remain viewable to all users. </p>
+     * <p>
+     * Section: Visible replies remain viewable to all users.
+     * </p>
      */
     @Test
     public void testVisibleReply_NoChange() {
         String body = "Thanks for the clarification!";
         Reply r = new Reply(
-            101, 1, "AnyUser", body,
-            true, "staffUser", "routine check", ts
-        );
+                101, 1, "AnyUser", body,
+                true, "staffUser", "routine check", ts);
 
         assertTrue(r.isVisible());
         assertEquals(body, r.getDisplayContent(STUDENT));
@@ -155,14 +165,15 @@ public class HidePostTests {
     /**
      * testHiddenReply_StudentView()
      *
-     * <p>Section: Hidden replies are masked for Student role. </p>
+     * <p>
+     * Section: Hidden replies are masked for Student role.
+     * </p>
      */
     @Test
     public void testHiddenReply_StudentView() {
         Reply r = new Reply(
-            102, 2, "Author", "Private reply text",
-            false, "modAlice", "policy violation", ts
-        );
+                102, 2, "Author", "Private reply text",
+                false, "modAlice", "policy violation", ts);
 
         assertFalse(r.isVisible());
         String shown = r.getDisplayContent(STUDENT);
@@ -173,15 +184,16 @@ public class HidePostTests {
     /**
      * testHiddenReply_StaffView()
      *
-     * <p>Section: Hidden replies visible to Staff with label. </p>
+     * <p>
+     * Section: Hidden replies visible to Staff with label.
+     * </p>
      */
     @Test
     public void testHiddenReply_StaffView() {
         String body = "Grading rubric updated.";
         Reply r = new Reply(
-            103, 3, "Author", body,
-            false, "adminBob", "moderation", ts
-        );
+                103, 3, "Author", body,
+                false, "adminBob", "moderation", ts);
 
         assertFalse(r.isVisible());
         String shown = r.getDisplayContent(STAFF);
@@ -192,15 +204,16 @@ public class HidePostTests {
     /**
      * testHiddenReply_AdminView()
      *
-     * <p>Section: Hidden replies visible to Admin with label. </p> 
+     * <p>
+     * Section: Hidden replies visible to Admin with label.
+     * </p>
      */
     @Test
     public void testHiddenReply_AdminView() {
         String body = "Please review section 2.";
         Reply r = new Reply(
-            104, 4, "Author", body,
-            false, "staffAmy", "sensitive info", ts
-        );
+                104, 4, "Author", body,
+                false, "staffAmy", "sensitive info", ts);
 
         assertFalse(r.isVisible());
         String shown = r.getDisplayContent(ADMIN);
