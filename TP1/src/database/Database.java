@@ -15,7 +15,7 @@ import java.time.LocalDateTime;
 public class Database {
 
     static final String JDBC_DRIVER = "org.h2.Driver";
-    static final String DB_URL = "jdbc:h2:~/FoundationDatabase";
+    private String dbUrl = "jdbc:h2:~/FoundationDatabase";
 
     static final String USER = "sa";
     static final String PASS = "";
@@ -35,7 +35,10 @@ public class Database {
     private boolean currentNewStaff;
 
     public Database() {
+    }
 
+    public Database(String dbUrl) {
+        this.dbUrl = dbUrl;
     }
 
     /**
@@ -47,7 +50,7 @@ public class Database {
     public void connectToDatabase() throws SQLException {
         try {
             Class.forName(JDBC_DRIVER);
-            connection = DriverManager.getConnection(DB_URL, USER, PASS);
+            connection = DriverManager.getConnection(dbUrl, USER, PASS);
             statement = connection.createStatement();
 
             createTables();

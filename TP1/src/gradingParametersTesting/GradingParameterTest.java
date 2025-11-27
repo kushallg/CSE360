@@ -9,10 +9,17 @@ import java.sql.SQLException;
 import java.util.List;
 
 /**
- * <p> Title: GradingParameterTest </p>
- * * <p> Description: JUnit tests for the Grading Parameters CRUD functionality. 
- * Covers creation, reading, updating, and deleting of rubric tags. </p>
- * * <p> Requirements Checked: 
+ * <p>
+ * Title: GradingParameterTest
+ * </p>
+ * *
+ * <p>
+ * Description: JUnit tests for the Grading Parameters CRUD functionality.
+ * Covers creation, reading, updating, and deleting of rubric tags.
+ * </p>
+ * *
+ * <p>
+ * Requirements Checked:
  * R-GRADING-01: Staff can create grading parameters.
  * R-GRADING-02: Staff can list all parameters.
  * R-GRADING-03: Staff can update a parameter.
@@ -22,14 +29,14 @@ import java.util.List;
 public class GradingParameterTest {
 
     private Database db;
-    
+
     @Before
     public void setUp() throws Exception {
-        db = new Database();
+        db = new Database("jdbc:h2:~/FoundationDatabaseTest;DB_CLOSE_DELAY=-1");
         db.connectToDatabase();
-        
+
         // Clean up table before each test to ensure a known state
-        // Note: In a real environment, we might mock the DB, but for this project, 
+        // Note: In a real environment, we might mock the DB, but for this project,
         // we often use the H2 in-memory logic or just create new items.
         // Since we don't have a clearAll method, we will rely on creating unique items.
     }
@@ -42,10 +49,10 @@ public class GradingParameterTest {
     public void testCreateAndReadParameter() {
         String name = "Test Param " + System.currentTimeMillis();
         String desc = "Description for testing creation.";
-        
+
         // 1. Create
         db.createGradingParameter(name, desc);
-        
+
         // 2. Read
         List<GradingParameter> list = db.getAllGradingParameters();
         boolean found = false;
@@ -55,7 +62,7 @@ public class GradingParameterTest {
                 break;
             }
         }
-        
+
         assertTrue("The new parameter should be found in the database list.", found);
         System.out.println("PASS: Create and Read Parameter");
     }
@@ -68,7 +75,7 @@ public class GradingParameterTest {
     public void testUpdateParameter() {
         String originalName = "UpdateMe " + System.currentTimeMillis();
         db.createGradingParameter(originalName, "Original Description");
-        
+
         // Fetch the ID of the created item
         List<GradingParameter> list = db.getAllGradingParameters();
         GradingParameter toUpdate = null;
@@ -79,15 +86,15 @@ public class GradingParameterTest {
             }
         }
         assertNotNull("Setup failed: Could not find parameter to update.", toUpdate);
-        
+
         // 1. Update
         String newName = originalName + " EDITED";
         String newDesc = "Updated Description";
-        
+
         toUpdate.setName(newName);
         toUpdate.setDescription(newDesc);
         db.updateGradingParameter(toUpdate);
-        
+
         // 2. Verify
         List<GradingParameter> newList = db.getAllGradingParameters();
         boolean matched = false;
@@ -111,7 +118,7 @@ public class GradingParameterTest {
     public void testDeleteParameter() {
         String name = "DeleteMe " + System.currentTimeMillis();
         db.createGradingParameter(name, "To be deleted");
-        
+
         // Fetch ID
         List<GradingParameter> list = db.getAllGradingParameters();
         GradingParameter toDelete = null;
@@ -122,10 +129,10 @@ public class GradingParameterTest {
             }
         }
         assertNotNull("Setup failed: Could not find parameter to delete.", toDelete);
-        
+
         // 1. Delete
         db.deleteGradingParameter(toDelete.getId());
-        
+
         // 2. Verify
         List<GradingParameter> newList = db.getAllGradingParameters();
         boolean found = false;
