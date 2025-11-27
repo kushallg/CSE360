@@ -19,28 +19,37 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-
 /**
- * <p> Title: ControllerDiscussions Class </p>
+ * <p>
+ * Title: ControllerDiscussions Class
+ * </p>
  *
- * <p> Description: This class handles the logic for the discussion forum,
- * including creating, editing, and deleting posts and replies. </p>
+ * <p>
+ * Description: This class handles the logic for the discussion forum,
+ * including creating, editing, and deleting posts and replies.
+ * </p>
  *
- * <p> Copyright: Lynn Robert Carter © 2025 </p>
+ * <p>
+ * Copyright: Lynn Robert Carter © 2025
+ * </p>
  *
  * @author Kushal Gadamsetty
  *
- * @version 1.08	2025-10-20 Corrected UI refresh exception
+ * @version 1.08 2025-10-20 Corrected UI refresh exception
  */
 public class ControllerDiscussions {
 
-	// variable for database
-    private static Database theDatabase = applicationMain.FoundationsMain.database;
-    
+    // variable for database
+    public static Database theDatabase = applicationMain.FoundationsMain.database;
+
     /*****
-     * <p> Method: boolean isCurrentUserStudent() </p>
+     * <p>
+     * Method: boolean isCurrentUserStudent()
+     * </p>
      * 
-     * <p> Description: Check if User is a student. </p>
+     * <p>
+     * Description: Check if User is a student.
+     * </p>
      * 
      */
     private static boolean isCurrentUserStudent() {
@@ -48,27 +57,36 @@ public class ControllerDiscussions {
     }
 
     /*****
-     * <p> Method: boolean isCurrentUserStaffOrAdmin() </p>
+     * <p>
+     * Method: boolean isCurrentUserStaffOrAdmin()
+     * </p>
      * 
-     * <p> Description: Check if User is a staff or admin (authorized users). </p>
+     * <p>
+     * Description: Check if User is a staff or admin (authorized users).
+     * </p>
      * 
      */
-    private static boolean isCurrentUserStaffOrAdmin() {
-    	int role = applicationMain.FoundationsMain.activeHomePage;
+    protected static boolean isCurrentUserStaffOrAdmin() {
+        int role = applicationMain.FoundationsMain.activeHomePage;
         return (role == 1 || role == 3);
     }
 
     /*****
-     * <p> Method: void initializeView() </p>
+     * <p>
+     * Method: void initializeView()
+     * </p>
      * 
-     * <p> Description: Initializes the view by loading all posts from the database into the ListView. </p>
+     * <p>
+     * Description: Initializes the view by loading all posts from the database into
+     * the ListView.
+     * </p>
      * 
      */
     protected static void initializeView() {
-    	// loads all the posts
+        // loads all the posts
         List<Post> posts = theDatabase.getAllPosts(ViewDiscussions.theUser.getUserName());
         List<Post> adjustedPosts = new ArrayList<>();
-        
+
         // Students should only see visible posts
         if (isCurrentUserStudent()) {
             posts = posts.stream()
@@ -78,7 +96,8 @@ public class ControllerDiscussions {
 
         for (Post p : posts) {
             // fetch all replies then filter by session visibility
-            List<Reply> allReplies = theDatabase.getRepliesForPost(p.getPostID(), ViewDiscussions.theUser.getUserName());
+            List<Reply> allReplies = theDatabase.getRepliesForPost(p.getPostID(),
+                    ViewDiscussions.theUser.getUserName());
             List<Reply> visibleReplies = allReplies.stream()
                     .filter(r -> isReplyVisibleToCurrentSession(r))
                     .collect(java.util.stream.Collectors.toList());
@@ -90,7 +109,7 @@ public class ControllerDiscussions {
             p.setUnreadReplyCount(visibleUnreadCount);
             adjustedPosts.add(p);
         }
-        
+
         ObservableList<Post> observablePosts = FXCollections.observableArrayList(posts);
         ViewDiscussions.listView_Posts.setItems(observablePosts);
 
@@ -99,15 +118,35 @@ public class ControllerDiscussions {
         ViewDiscussions.textArea_PostContent.clear();
         ViewDiscussions.listView_Replies.getItems().clear();
 
+        // REFRESH THREAD LIST
+        boolean isStaffOrAdmin = isCurrentUserStaffOrAdmin();
+        List<String> threadTitles;
+        if (isStaffOrAdmin) {
+            threadTitles = theDatabase.getAllThreadTitles();
+        } else {
+            threadTitles = theDatabase.getVisibleThreadTitles();
+        }
+        ViewDiscussions.comboBox_Threads.getItems().setAll(threadTitles);
+        // Reselect the first item if nothing is selected or if the previous selection
+        // is gone
+        if (ViewDiscussions.comboBox_Threads.getSelectionModel().isEmpty() ||
+                !threadTitles.contains(ViewDiscussions.comboBox_Threads.getValue())) {
+            ViewDiscussions.comboBox_Threads.getSelectionModel().selectFirst();
+        }
         updatePostSummary();
         updateReplySummary();
     }
 
     /**
-     * <p> Method: void postSelected(Post selectedPost) </p>
+     * <p>
+     * Method: void postSelected(Post selectedPost)
+     * </p>
      * 
-     * <p> Description:Handles the event when a post is selected from the list. It displays the post's
-     * content, loads its replies, and marks the post as read. </p>
+     * <p>
+     * Description:Handles the event when a post is selected from the list. It
+     * displays the post's
+     * content, loads its replies, and marks the post as read.
+     * </p>
      * 
      * @param selectedPost The post that was selected by the user.
      */
@@ -125,29 +164,29 @@ public class ControllerDiscussions {
             // Don't mark as read since student shouldn't have access
             return;
         }
-        
+
         theDatabase.markPostAsRead(selectedPost.getPostID(), ViewDiscussions.theUser.getUserName());
         selectedPost.setViewed(true);
         ViewDiscussions.listView_Posts.refresh();
 
         if (selectedPost.isDeleted()) {
-            ViewDiscussions.textArea_PostContent.setText("Title: deleted\nAuthor: " + 
-                selectedPost.getAuthorUsername() + "\nThread: " + selectedPost.getThread() + 
-                "\n\ndeleted");
+            ViewDiscussions.textArea_PostContent.setText("Title: deleted\nAuthor: " +
+                    selectedPost.getAuthorUsername() + "\nThread: " + selectedPost.getThread() +
+                    "\n\ndeleted");
             // Don't clear replies - keep them displayed
-            List<Reply> replies = theDatabase.getRepliesForPost(selectedPost.getPostID(), ViewDiscussions.theUser.getUserName());
-            
+            List<Reply> replies = theDatabase.getRepliesForPost(selectedPost.getPostID(),
+                    ViewDiscussions.theUser.getUserName());
+
             if (isCurrentUserStudent()) {
                 replies = replies.stream()
                         .filter(Reply::isVisible)
                         .collect(java.util.stream.Collectors.toList());
             }
-            
+
             String currentUser = ViewDiscussions.theUser.getUserName();
-	         List<Reply> visibleReplies = replies.stream()
-	                 .filter(r -> r.isVisibleTo(currentUser))
-	                 .collect(Collectors.toList());
-            
+            List<Reply> visibleReplies = replies.stream()
+                    .filter(r -> r.isVisibleTo(currentUser))
+                    .collect(Collectors.toList());
             ObservableList<Reply> observableReplies = FXCollections.observableArrayList(replies);
             ViewDiscussions.listView_Replies.setItems(observableReplies);
             updateReplySummary();
@@ -157,40 +196,45 @@ public class ControllerDiscussions {
 
         // Display the post content
         String postDetails = "";
-        
+
         // label for staff/admin when post is hidden
         if (!selectedPost.isVisible() && isCurrentUserStaffOrAdmin()) {
             postDetails += "[Hidden by Staff]\n\n";
         }
-        
+
         postDetails += "Title: " + selectedPost.getTitle() + "\n" +
-                             "Author: " + selectedPost.getAuthorUsername() + "\n" +
-                             "Thread: " + selectedPost.getThread() + "\n\n" +
-                             selectedPost.getContent();
+                "Author: " + selectedPost.getAuthorUsername() + "\n" +
+                "Thread: " + selectedPost.getThread() + "\n\n" +
+                selectedPost.getContent();
         ViewDiscussions.textArea_PostContent.setText(postDetails);
 
         // Fetch and display replies of a selected post
-        List<Reply> replies = theDatabase.getRepliesForPost(selectedPost.getPostID(), ViewDiscussions.theUser.getUserName());
-        
+        List<Reply> replies = theDatabase.getRepliesForPost(selectedPost.getPostID(),
+                ViewDiscussions.theUser.getUserName());
+
         // Students cannot see hidden replies
         if (isCurrentUserStudent()) {
             replies = replies.stream()
                     .filter(Reply::isVisible)
                     .collect(Collectors.toList());
         }
-        
         ObservableList<Reply> observableReplies = FXCollections.observableArrayList(replies);
         ViewDiscussions.listView_Replies.setItems(observableReplies);
-        
+
         updateReplySummary();
         updatePostSummary();
-        
+
     }
 
     /**
-     * <p> Method: void replySelected(Reply selectedReply) </p>
+     * <p>
+     * Method: void replySelected(Reply selectedReply)
+     * </p>
      * 
-     * <p> Description: Handles the event when a reply is selected from the list. It marks the reply as read. </p>
+     * <p>
+     * Description: Handles the event when a reply is selected from the list. It
+     * marks the reply as read.
+     * </p>
      * 
      * @param selectedReply The reply that was selected by the user.
      */
@@ -198,43 +242,49 @@ public class ControllerDiscussions {
         if (selectedReply != null && !selectedReply.isViewed()) {
             theDatabase.markReplyAsRead(selectedReply.getReplyID(), ViewDiscussions.theUser.getUserName());
             selectedReply.setViewed(true);
-            ViewDiscussions.listView_Replies.refresh();// show a small info if this is private feedback and user can see it
+            ViewDiscussions.listView_Replies.refresh();// show a small info if this is private feedback and user can see
+                                                       // it
             if ("private".equalsIgnoreCase(selectedReply.getVisibility())) {
                 // append or show a small alert/label — example: append to the post content area
                 String existing = ViewDiscussions.textArea_PostContent.getText();
                 ViewDiscussions.textArea_PostContent.setText(existing + "\n\n[private feedback]");
             }
 
+            // By using Platform.runLater, we schedule the post list update to happen
+            // after the current UI event is finished, preventing the crash.
             Platform.runLater(() -> {
                 int selectedIndex = ViewDiscussions.listView_Posts.getSelectionModel().getSelectedIndex();
                 initializeView();
                 List<Post> posts = theDatabase.getAllPosts(ViewDiscussions.theUser.getUserName());
-                
+
                 // Visbility filtering
                 if (isCurrentUserStudent()) {
                     posts = posts.stream()
                             .filter(Post::isVisible)
                             .collect(Collectors.toList());
                 }
-                
+
                 ViewDiscussions.listView_Posts.setItems(FXCollections.observableArrayList(posts));
                 if (selectedIndex != -1) {
                     ViewDiscussions.listView_Posts.getSelectionModel().select(selectedIndex);
                 }
-                
+
                 updatePostSummary();
                 updateReplySummary();
             });
         }
-        
-        
-        
+
     }
 
     /**
-     * <p> Method: void createPost() </p>
+     * <p>
+     * Method: void createPost()
+     * </p>
      * 
-     * <p> Description: Guides the user through creating a new post and saves it to the database. </p>
+     * <p>
+     * Description: Guides the user through creating a new post and saves it to the
+     * database.
+     * </p>
      * 
      */
     protected static void createPost() {
@@ -244,40 +294,53 @@ public class ControllerDiscussions {
         titleDialog.setContentText("Title:");
         Optional<String> titleResult = titleDialog.showAndWait();
 
-        //Conduct input validation to make sure title content is not empty
         if (titleResult.isPresent() && !titleResult.get().trim().isEmpty()) {
             String title = titleResult.get();
 
-            // Dialog for selecting a thread
-            List<String> threadChoices = Arrays.asList("General", "Homework", "Exams");
-            ChoiceDialog<String> threadDialog = new ChoiceDialog<>("General", threadChoices);
+            // --- DYNAMIC THREAD FETCHING START ---
+            boolean isStaffOrAdmin = isCurrentUserStaffOrAdmin();
+            java.util.List<String> threadChoices;
+
+            if (isStaffOrAdmin) {
+                threadChoices = theDatabase.getAllThreadTitles();
+            } else {
+                threadChoices = theDatabase.getVisibleThreadTitles();
+            }
+
+            // Remove "All Threads" from the creation choices
+            threadChoices.remove("All Threads");
+
+            if (threadChoices.isEmpty())
+                threadChoices.add("General");
+
+            javafx.scene.control.ChoiceDialog<String> threadDialog = new javafx.scene.control.ChoiceDialog<>(
+                    threadChoices.get(0), threadChoices);
+            // --- DYNAMIC THREAD FETCHING END ---
+
             threadDialog.setTitle("Create New Post");
             threadDialog.setHeaderText("Select a thread for your post.");
             threadDialog.setContentText("Thread:");
             Optional<String> threadResult = threadDialog.showAndWait();
 
-            //Default to General Thread
             String thread = threadResult.orElse("General");
 
-            // Use a TextArea in a custom dialog for multi-line content input
             TextInputDialog contentDialog = new TextInputDialog();
             contentDialog.setTitle("Create New Post");
             contentDialog.setHeaderText("Enter the content for your post.");
             contentDialog.setContentText("Content:");
-            
-            // Customize dialog to use a TextArea
-            TextArea textArea = new TextArea();
-            DialogPane dialogPane = contentDialog.getDialogPane();
+
+            javafx.scene.control.TextArea textArea = new javafx.scene.control.TextArea();
+            javafx.scene.control.DialogPane dialogPane = contentDialog.getDialogPane();
             dialogPane.setContent(textArea);
 
             Optional<String> contentResult = contentDialog.showAndWait();
 
-            //Conduct input validation to make sure post content is not empty
             if (contentResult.isPresent() && !textArea.getText().trim().isEmpty()) {
                 String content = textArea.getText();
-                Post newPost = new Post(0, ViewDiscussions.theUser.getUserName(), title, content, thread, false, false, 0, 0);
-                theDatabase.create(newPost); //change
-                initializeView(); // This already calls updatePostSummary()
+                entityClasses.Post newPost = new entityClasses.Post(0, ViewDiscussions.theUser.getUserName(), title,
+                        content, thread, false, false, 0, 0);
+                theDatabase.create(newPost);
+                initializeView();
             } else {
                 showError("Post content cannot be empty.");
             }
@@ -287,9 +350,13 @@ public class ControllerDiscussions {
     }
 
     /**
-     * <p> Method:  void editPost() </p>
+     * <p>
+     * Method: void editPost()
+     * </p>
      * 
-     * <p> Description: Allows the author of a post to edit its title and content. </p>
+     * <p>
+     * Description: Allows the author of a post to edit its title and content.
+     * </p>
      * 
      */
     protected static void editPost() {
@@ -298,7 +365,8 @@ public class ControllerDiscussions {
             showError("Please select a post to edit.");
             return;
         }
-        // Checks to see if user trying to update post is post author, otherwise throws error.
+        // Checks to see if user trying to update post is post author, otherwise throws
+        // error.
         if (!selectedPost.getAuthorUsername().equals(ViewDiscussions.theUser.getUserName())) {
             showError("You can only edit your own posts.");
             return;
@@ -311,7 +379,7 @@ public class ControllerDiscussions {
         titleDialog.setContentText("Title:");
         Optional<String> titleResult = titleDialog.showAndWait();
 
-      //Conduct input validation to make sure post title is not empty
+        // Conduct input validation to make sure post title is not empty
         if (titleResult.isPresent() && !titleResult.get().trim().isEmpty()) {
             selectedPost.setTitle(titleResult.get());
 
@@ -327,10 +395,10 @@ public class ControllerDiscussions {
 
             Optional<String> contentResult = contentDialog.showAndWait();
 
-          //Conduct input validation to make sure post content is not empty
+            // Conduct input validation to make sure post content is not empty
             if (contentResult.isPresent() && !textArea.getText().trim().isEmpty()) {
                 selectedPost.setContent(textArea.getText());
-                theDatabase.update(selectedPost); //change
+                theDatabase.update(selectedPost); // change
                 initializeView(); // This already calls updatePostSummary()
             } else {
                 showError("Post content cannot be empty.");
@@ -338,11 +406,14 @@ public class ControllerDiscussions {
         }
     }
 
-
     /**
-     * <p> Method: void deletePost() </p>
+     * <p>
+     * Method: void deletePost()
+     * </p>
      * 
-     * <p> Description: Deletes a selected post after user confirmation. </p>
+     * <p>
+     * Description: Deletes a selected post after user confirmation.
+     * </p>
      * 
      */
     protected static void deletePost() {
@@ -351,13 +422,14 @@ public class ControllerDiscussions {
             showError("Please select a post to delete.");
             return;
         }
-        // Checks to see if user trying to delete post is post author, otherwise throws error.
+        // Checks to see if user trying to delete post is post author, otherwise throws
+        // error.
         if (!selectedPost.getAuthorUsername().equals(ViewDiscussions.theUser.getUserName())) {
             showError("You can only delete your own posts.");
             return;
         }
 
-        //Create a message for confirmation of deletion
+        // Create a message for confirmation of deletion
         Alert confirmation = new Alert(Alert.AlertType.CONFIRMATION);
         confirmation.setTitle("Confirm Deletion");
         confirmation.setHeaderText("Are you sure you want to delete this post?");
@@ -365,15 +437,19 @@ public class ControllerDiscussions {
 
         Optional<ButtonType> result = confirmation.showAndWait();
         if (result.isPresent() && result.get() == ButtonType.OK) {
-        	theDatabase.delete(selectedPost); //change
+            theDatabase.delete(selectedPost); // change
             initializeView(); // Refresh the view
         }
     }
 
     /**
-     * <p> Method:  void addReply()</p>
+     * <p>
+     * Method: void addReply()
+     * </p>
      * 
-     * <p> Description: Allows a user to add a reply to the selected post.</p>
+     * <p>
+     * Description: Allows a user to add a reply to the selected post.
+     * </p>
      * 
      */
     protected static void addReply() {
@@ -389,7 +465,7 @@ public class ControllerDiscussions {
             Alert typeDialog = new Alert(Alert.AlertType.CONFIRMATION);
             typeDialog.setTitle("Reply Type");
             typeDialog.setHeaderText("Choose reply visibility");
-            ButtonType btnPublic  = new ButtonType("Public");
+            ButtonType btnPublic = new ButtonType("Public");
             ButtonType btnPrivate = new ButtonType("Private feedback");
             typeDialog.getButtonTypes().setAll(btnPublic, btnPrivate, ButtonType.CANCEL);
 
@@ -399,43 +475,41 @@ public class ControllerDiscussions {
             }
             visibility = (typeResult.get() == btnPrivate) ? "private" : "public";
         }
-        
+
         TextInputDialog replyDialog = new TextInputDialog();
         replyDialog.setTitle("Add Reply");
         replyDialog.setHeaderText("Enter your reply for the post: " + selectedPost.getTitle());
         replyDialog.setContentText("Reply:");
         Optional<String> result = replyDialog.showAndWait();
 
-        //Conduct input validation to make sure reply content is not empty
+        // Conduct input validation to make sure reply content is not empty
         if (result.isPresent() && !result.get().trim().isEmpty()) {
             String content = result.get();
             Reply newReply = new Reply(0, selectedPost.getPostID(), ViewDiscussions.theUser.getUserName(), content);
             if ("private".equals(visibility)) {
                 newReply = new Reply(
-                    0,
-                    selectedPost.getPostID(),
-                    ViewDiscussions.theUser.getUserName(),
-                    content,
-                    "private",
-                    selectedPost.getAuthorUsername()
-                );
+                        0,
+                        selectedPost.getPostID(),
+                        ViewDiscussions.theUser.getUserName(),
+                        content,
+                        "private",
+                        selectedPost.getAuthorUsername());
             } else {
                 newReply = new Reply(
-                    0,
-                    selectedPost.getPostID(),
-                    ViewDiscussions.theUser.getUserName(),
-                    content
-                );
+                        0,
+                        selectedPost.getPostID(),
+                        ViewDiscussions.theUser.getUserName(),
+                        content);
             }
 
-            boolean success = theDatabase.createReply(newReply);  // see next section
+            boolean success = theDatabase.createReply(newReply); // see next section
 
             if (success) {
                 postSelected(selectedPost);
                 List<Post> posts = theDatabase.getAllPosts(ViewDiscussions.theUser.getUserName());
                 ViewDiscussions.listView_Posts.setItems(FXCollections.observableArrayList(posts));
             }
-            
+
             if ("private".equals(visibility)) {
                 if (success) {
                     Alert ok = new Alert(Alert.AlertType.INFORMATION);
@@ -451,7 +525,7 @@ public class ControllerDiscussions {
             }
 
             if (success) {
-                postSelected(selectedPost);  // refresh replies + summaries
+                postSelected(selectedPost); // refresh replies + summaries
             }
         } else {
             showError("Reply content cannot be empty.");
@@ -459,9 +533,14 @@ public class ControllerDiscussions {
     }
 
     /**
-     * <p> Method: void searchPosts() </p>
+     * <p>
+     * Method: void searchPosts()
+     * </p>
      * 
-     * <p> Description: Searches for posts based on the keyword and thread selected in the UI.</p>
+     * <p>
+     * Description: Searches for posts based on the keyword and thread selected in
+     * the UI.
+     * </p>
      * 
      */
     protected static void searchPosts() {
@@ -472,12 +551,11 @@ public class ControllerDiscussions {
         List<Post> posts = theDatabase.searchPosts(
                 keyword,
                 thread,
-                ViewDiscussions.theUser.getUserName()
-        );
+                ViewDiscussions.theUser.getUserName());
 
         // Students should not see hidden posts in search results
         boolean isStudent = ViewDiscussions.theUser != null
-                && ViewDiscussions.theUser.getNewStudent();  // or whatever your "student" flag is
+                && ViewDiscussions.theUser.getNewStudent(); // or whatever your "student" flag is
 
         if (isStudent) {
             posts = posts.stream()
@@ -493,20 +571,23 @@ public class ControllerDiscussions {
         updateReplySummary();
     }
 
-    
-    
-
     /**
-     * <p> Method: void viewMyPosts() </p>
+     * <p>
+     * Method: void viewMyPosts()
+     * </p>
      * 
-     * <p> Description: Filters the posts to show only those created by the current user.</p>
+     * <p>
+     * Description: Filters the posts to show only those created by the current
+     * user.
+     * </p>
      * 
      */
     protected static void viewMyPosts() {
         // Load all posts visible
         List<Post> allPosts = theDatabase.getAllPosts(ViewDiscussions.theUser.getUserName());
         List<Post> myPosts = allPosts.stream()
-        		//filter based on if the post's author username is the same as the current logged in user
+                // filter based on if the post's author username is the same as the current
+                // logged in user
                 .filter(post -> post.getAuthorUsername().equals(ViewDiscussions.theUser.getUserName()))
                 .collect(Collectors.toList());
 
@@ -522,16 +603,20 @@ public class ControllerDiscussions {
     }
 
     /**
-     * <p> Method: void viewUnreadPosts()</p>
+     * <p>
+     * Method: void viewUnreadPosts()
+     * </p>
      * 
-     * <p> Description: Filters the posts to show only those that are unread.</p>
+     * <p>
+     * Description: Filters the posts to show only those that are unread.
+     * </p>
      * 
      */
     protected static void viewUnreadPosts() {
-    	// Load all posts visible
+        // Load all posts visible
         List<Post> allPosts = theDatabase.getAllPosts(ViewDiscussions.theUser.getUserName());
         List<Post> unreadPosts = allPosts.stream()
-        		//filter based on if the post has been read yet using the viewed attribute
+                // filter based on if the post has been read yet using the viewed attribute
                 .filter(post -> !post.isViewed())
                 .collect(Collectors.toList());
         if (isCurrentUserStudent()) {
@@ -541,15 +626,20 @@ public class ControllerDiscussions {
         }
         ObservableList<Post> observablePosts = FXCollections.observableArrayList(unreadPosts);
         ViewDiscussions.listView_Posts.setItems(observablePosts);
-        
+
         updatePostSummary();
     }
 
     /**
-     * <p> Method: void viewUnreadReplies() </p>
+     * <p>
+     * Method: void viewUnreadReplies()
+     * </p>
      * 
-     * <p> Description: Filters the replies for the currently selected post to show only unread replies.
-     * If no post is selected, an error message is displayed to the user. </p>
+     * <p>
+     * Description: Filters the replies for the currently selected post to show only
+     * unread replies.
+     * If no post is selected, an error message is displayed to the user.
+     * </p>
      * 
      */
     protected static void viewUnreadReplies() {
@@ -561,8 +651,7 @@ public class ControllerDiscussions {
         // Fetch all replies for the selected post
         List<Reply> allReplies = theDatabase.getRepliesForPost(
                 selectedPost.getPostID(),
-                ViewDiscussions.theUser.getUserName()
-        );
+                ViewDiscussions.theUser.getUserName());
         // Only unread replies
         List<Reply> unreadReplies = allReplies.stream()
                 .filter(reply -> !reply.isViewed())
@@ -576,14 +665,19 @@ public class ControllerDiscussions {
         // Update list view to only show unread
         ObservableList<Reply> observableReplies = FXCollections.observableArrayList(unreadReplies);
         ViewDiscussions.listView_Replies.setItems(observableReplies);
+
         updatePostSummary();
         updateReplySummary();
     }
 
     /**
-     * <p> Method: void editReply()</p>
+     * <p>
+     * Method: void editReply()
+     * </p>
      * 
-     * <p> Description: Allows the author of a reply to edit its content. </p>
+     * <p>
+     * Description: Allows the author of a reply to edit its content.
+     * </p>
      * 
      */
     protected static void editReply() {
@@ -592,7 +686,8 @@ public class ControllerDiscussions {
             showError("Please select a reply to edit.");
             return;
         }
-     // Checks to see if user trying to update reply is reply author, otherwise throws error.
+        // Checks to see if user trying to update reply is reply author, otherwise
+        // throws error.
         if (!selectedReply.getAuthorUsername().equals(ViewDiscussions.theUser.getUserName())) {
             showError("You can only edit your own replies.");
             return;
@@ -604,11 +699,11 @@ public class ControllerDiscussions {
         dialog.setContentText("Reply:");
 
         Optional<String> result = dialog.showAndWait();
-        //Conduct input validation to make sure reply content is not empty
+        // Conduct input validation to make sure reply content is not empty
         if (result.isPresent() && !result.get().trim().isEmpty()) {
             selectedReply.setContent(result.get());
-            theDatabase.update(selectedReply); //change
-            postSelected(ViewDiscussions.listView_Posts.getSelectionModel().getSelectedItem()); //reload replies
+            theDatabase.update(selectedReply); // change
+            postSelected(ViewDiscussions.listView_Posts.getSelectionModel().getSelectedItem()); // reload replies
         } else {
             showError("Reply content cannot be empty.");
         }
@@ -617,9 +712,13 @@ public class ControllerDiscussions {
     }
 
     /**
-     * <p> Method: void deleteReply()</p>
+     * <p>
+     * Method: void deleteReply()
+     * </p>
      * 
-     * <p> Description: Deletes a selected reply after user confirmation.</p>
+     * <p>
+     * Description: Deletes a selected reply after user confirmation.
+     * </p>
      * 
      */
     protected static void deleteReply() {
@@ -629,13 +728,14 @@ public class ControllerDiscussions {
             return;
         }
 
-        // Checks to see if user trying to update reply is reply author, otherwise throws error.
+        // Checks to see if user trying to update reply is reply author, otherwise
+        // throws error.
         if (!selectedReply.getAuthorUsername().equals(ViewDiscussions.theUser.getUserName())) {
             showError("You can only delete your own replies.");
             return;
         }
 
-        //Create a message for confirmation of reply deletion
+        // Create a message for confirmation of reply deletion
         Alert confirmation = new Alert(Alert.AlertType.CONFIRMATION);
         confirmation.setTitle("Confirm Deletion");
         confirmation.setHeaderText("Are you sure you want to delete this reply?");
@@ -643,7 +743,7 @@ public class ControllerDiscussions {
 
         Optional<ButtonType> result = confirmation.showAndWait();
         if (result.isPresent() && result.get() == ButtonType.OK) {
-        	theDatabase.delete(selectedReply); //change
+            theDatabase.delete(selectedReply); // change
             postSelected(ViewDiscussions.listView_Posts.getSelectionModel().getSelectedItem()); // reload replies
         }
         updatePostSummary();
@@ -651,19 +751,34 @@ public class ControllerDiscussions {
     }
 
     /**
-     * <p> Method: void returnToHome()</p>
+     * <p>
+     * Method: void returnToHome()
+     * </p>
      * 
-     * <p> Description: Returns the user to their home page. </p>
+     * <p>
+     * Description: Returns the user to their home page.
+     * </p>
      * 
      */
     protected static void returnToHome() {
-        ViewStudentHome.displayStudentHome(ViewDiscussions.theStage, ViewDiscussions.theUser);
+        entityClasses.User u = ViewDiscussions.theUser;
+        if (u.getAdminRole()) {
+            guiAdminHome.ViewAdminHome.displayAdminHome(ViewDiscussions.theStage, u);
+        } else if (u.getNewStaff() && !u.getNewStudent()) {
+            guiStaff.ViewStaffHome.displayStaffHome(ViewDiscussions.theStage, u);
+        } else {
+            ViewStudentHome.displayStudentHome(ViewDiscussions.theStage, u);
+        }
     }
 
     /**
-     * <p> Method: void showError(String message)</p>
+     * <p>
+     * Method: void showError(String message)
+     * </p>
      * 
-     * <p> Description: A helper method to quickly show an error alert. </p>
+     * <p>
+     * Description: A helper method to quickly show an error alert.
+     * </p>
      * 
      * @param message The error message to display.
      */
@@ -674,72 +789,84 @@ public class ControllerDiscussions {
         alert.setContentText(message);
         alert.showAndWait();
     }
-    
+
     /**
-     * <p> Method: void updatePostSummary() </p>
+     * <p>
+     * Method: void updatePostSummary()
+     * </p>
      * 
-     * <p> Description: Updates the discussions view summary with the total and unread post counts,
-     * or shows a default message if no posts are available. </p>
+     * <p>
+     * Description: Updates the discussions view summary with the total and unread
+     * post counts,
+     * or shows a default message if no posts are available.
+     * </p>
      * 
      */
     private static void updatePostSummary() {
-    	// Get currently displayed posts (can be all, filtered, or searched)
+        // Get currently displayed posts (can be all, filtered, or searched)
         List<Post> currentPosts = ViewDiscussions.listView_Posts.getItems();
-        
+
         // If the list is empty, display default text
         if (currentPosts == null || currentPosts.isEmpty()) {
             ViewDiscussions.label_PostSummary.setText("No posts to display");
             return;
         }
-        
+
         // Count how many of those posts are unread
         long unreadCount = currentPosts.stream()
                 .filter(post -> !post.isViewed())
                 .count();
         // Display the total and unread counts
         ViewDiscussions.label_PostSummary.setText(
-            String.format("Showing %d posts (%d unread)", 
-                currentPosts.size(), unreadCount)
-        );
+                String.format("Showing %d posts (%d unread)",
+                        currentPosts.size(), unreadCount));
     }
-    
-    
+
     /**
-     * <p> Method: void updateReplySummary()</p>
+     * <p>
+     * Method: void updateReplySummary()
+     * </p>
      * 
-     * <p> Description: Updates the reply summary label with the total and unread reply counts,
-     * or clears/displays a default message when no replies are available.</p>
+     * <p>
+     * Description: Updates the reply summary label with the total and unread reply
+     * counts,
+     * or clears/displays a default message when no replies are available.
+     * </p>
      * 
      */
     private static void updateReplySummary() {
         Post selectedPost = ViewDiscussions.listView_Posts.getSelectionModel().getSelectedItem();
-        
+
         if (selectedPost == null) {
             ViewDiscussions.label_ReplySummary.setText("");
             return;
         }
-        
+
         List<Reply> currentReplies = ViewDiscussions.listView_Replies.getItems();
         if (currentReplies == null || currentReplies.isEmpty()) {
             ViewDiscussions.label_ReplySummary.setText("No replies");
             return;
         }
-        
+
         // Count how many of replies posts are unread
         long unreadCount = currentReplies.stream()
                 .filter(reply -> !reply.isViewed())
                 .count();
         // Display the total and unread counts
         ViewDiscussions.label_ReplySummary.setText(
-            String.format("%d replies (%d unread)", 
-                currentReplies.size(), unreadCount)
-        );
+                String.format("%d replies (%d unread)",
+                        currentReplies.size(), unreadCount));
     }
-    
+
     /*****
-     * <p> Method: boolean isReplyVisibleToCurrentSession() </p>
+     * <p>
+     * Method: boolean isReplyVisibleToCurrentSession()
+     * </p>
      * 
-     * <p> Description: Check if reply is visible to current user based on visibility settings and role. </p>
+     * <p>
+     * Description: Check if reply is visible to current user based on visibility
+     * settings and role.
+     * </p>
      * 
      */
     private static boolean isReplyVisibleToCurrentSession(Reply r) {
@@ -747,18 +874,24 @@ public class ControllerDiscussions {
         String currentUsername = ViewDiscussions.theUser == null ? null : ViewDiscussions.theUser.getUserName();
 
         // Public replies are always visible
-        if ("public".equals(r.getVisibility())) return true;
+        if ("public".equals(r.getVisibility()))
+            return true;
 
-        // Private feedback: visible to staff only, and to the receiving student and the reply author
+        // Private feedback: visible to staff only, and to the receiving student and the
+        // reply author
         if ("private".equals(r.getVisibility())) {
             // Staff acting session: can view all private feedback
-            if (activeRole == 3) return true;
+            if (activeRole == 3)
+                return true;
 
             // If the current session is the recipient student
-            if (currentUsername != null && currentUsername.equals(r.getPostAuthorUsername())) return true;
+            if (currentUsername != null && currentUsername.equals(r.getPostAuthorUsername()))
+                return true;
 
-            // The author of the reply (the staff user who posted it) should see their own reply
-            if (currentUsername != null && currentUsername.equals(r.getAuthorUsername())) return true;
+            // The author of the reply (the staff user who posted it) should see their own
+            // reply
+            if (currentUsername != null && currentUsername.equals(r.getAuthorUsername()))
+                return true;
 
             // Otherwise hidden
             return false;
@@ -766,11 +899,16 @@ public class ControllerDiscussions {
 
         return false;
     }
-    
+
     /**
-     * <p> Method: void toggleVisibilityForSelection()</p>
+     * <p>
+     * Method: void toggleVisibilityForSelection()
+     * </p>
      * 
-     * <p> Description: Implements functionality of toggle visibility (hide/unhide) for selected post/reply.</p>
+     * <p>
+     * Description: Implements functionality of toggle visibility (hide/unhide) for
+     * selected post/reply.
+     * </p>
      * 
      */
     protected static void toggleVisibilityForSelection() {
@@ -842,11 +980,15 @@ public class ControllerDiscussions {
             initializeView();
         }
     }
-    
+
     /**
-     * <p> Method: void flagSelectedContent()</p>
+     * <p>
+     * Method: void flagSelectedContent()
+     * </p>
      * 
-     * <p> Description: Flag content with a required reason.</p>
+     * <p>
+     * Description: Flag content with a required reason.
+     * </p>
      * 
      */
     protected static void flagSelectedContent() {
