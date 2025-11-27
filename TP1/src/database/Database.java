@@ -175,6 +175,13 @@ public class Database {
                 + ")";
         statement.execute(moderationLogTable);
 
+        // Add this inside the createTables() method in Database.java
+        String gradingParamsTable = "CREATE TABLE IF NOT EXISTS grading_parameters ("
+                + "id INT AUTO_INCREMENT PRIMARY KEY, "
+                + "name VARCHAR(255), "
+                + "description VARCHAR(1024))";
+        statement.execute(gradingParamsTable);
+
     }
 
     /**
@@ -1984,6 +1991,78 @@ public class Database {
         String sql = "DELETE FROM discussion_threads WHERE title = ?";
         try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
             pstmt.setString(1, title);
+            pstmt.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+    // --- GRADING PARAMETERS OPERATIONS (Staff Epic) ---
+
+    /**
+     * Creates a new grading parameter.
+     * 
+     * @param name        The name of the parameter (e.g., "Engagement").
+     * @param description The description of the parameter.
+     */
+    public void createGradingParameter(String name, String description) {
+        String sql = "INSERT INTO grading_parameters (name, description) VALUES (?, ?)";
+        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+            pstmt.setString(1, name);
+            pstmt.setString(2, description);
+            pstmt.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * Retrieves all grading parameters.
+     * 
+     * @return A list of GradingParameter objects.
+     */
+    public List<entityClasses.GradingParameter> getAllGradingParameters() {
+        List<entityClasses.GradingParameter> list = new ArrayList<>();
+        String sql = "SELECT * FROM grading_parameters ORDER BY id ASC";
+        try (PreparedStatement pstmt = connection.prepareStatement(sql);
+                ResultSet rs = pstmt.executeQuery()) {
+            while (rs.next()) {
+                list.add(new entityClasses.GradingParameter(
+                        rs.getInt("id"),
+                        rs.getString("name"),
+                        rs.getString("description")));
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return list;
+    }
+
+    /**
+     * Updates an existing grading parameter.
+     * 
+     * @param param The GradingParameter object with updated values.
+     */
+    public void updateGradingParameter(entityClasses.GradingParameter param) {
+        String sql = "UPDATE grading_parameters SET name = ?, description = ? WHERE id = ?";
+        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+            pstmt.setString(1, param.getName());
+            pstmt.setString(2, param.getDescription());
+            pstmt.setInt(3, param.getId());
+            pstmt.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * Deletes a grading parameter.
+     * 
+     * @param id The ID of the parameter to delete.
+     */
+    public void deleteGradingParameter(int id) {
+        String sql = "DELETE FROM grading_parameters WHERE id = ?";
+        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+            pstmt.setInt(1, id);
             pstmt.executeUpdate();
         } catch (SQLException e) {
             e.printStackTrace();

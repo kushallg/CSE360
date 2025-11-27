@@ -37,7 +37,6 @@ import guiUserUpdate.ViewUserUpdate; // To mirror student home "Account Update" 
  */
 
 public class ViewStaffHome {
-
 	private static double width = applicationMain.FoundationsMain.WINDOW_WIDTH;
 	private static double height = applicationMain.FoundationsMain.WINDOW_HEIGHT;
 
@@ -56,6 +55,7 @@ public class ViewStaffHome {
 	protected static Line line_Separator4 = new Line(20, 525, width - 20, 525);
 	protected static Button button_Logout = new Button("Logout");
 	protected static Button button_Quit = new Button("Quit");
+	protected static Button button_GradingParameters = new Button("Grading Parameters");
 
 	private static ViewStaffHome theView;
 	private static Database theDatabase = applicationMain.FoundationsMain.database;
@@ -117,6 +117,11 @@ public class ViewStaffHome {
 			guiThreadManagement.View.display(theStage, theUser);
 		});
 
+		setupButtonUI(button_GradingParameters, "Dialog", 18, 250, Pos.CENTER, (width - 250) / 2, 360);
+		button_GradingParameters.setOnAction((event) -> {
+			guiGradingParameters.View.display(theStage, theUser);
+		});
+
 		// GUI Area 3
 		setupButtonUI(button_Logout, "Dialog", 18, 250, Pos.CENTER, 20, 540);
 		button_Logout.setOnAction((event) -> {
@@ -130,9 +135,10 @@ public class ViewStaffHome {
 
 		// Place all of the widget items into the Root Pane's list of children
 		theRootPane.getChildren().addAll(
-				label_PageTitle, label_UserDetails, button_UpdateThisUser, line_Separator1,
-				button_GoToDiscussions, button_AdminRequests, button_ManageThreads,
-				line_Separator4, button_Logout, button_Quit);
+        label_PageTitle, label_UserDetails, button_UpdateThisUser, line_Separator1,
+        button_GoToDiscussions, button_AdminRequests, button_ManageThreads,
+        button_GradingParameters, // <--- ADD THIS
+        line_Separator4, button_Logout, button_Quit);
 	}
 
 	private static void setupLabelUI(Label l, String ff, double f, double w, Pos p, double x, double y) {
