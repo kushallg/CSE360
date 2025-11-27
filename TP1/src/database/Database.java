@@ -185,6 +185,23 @@ public class Database {
                 + "description VARCHAR(1024))";
         statement.execute(gradingParamsTable);
 
+        // --- NEW TABLES FOR ADMIN REQUESTS & THREADS ---
+        String adminRequestsTable = "CREATE TABLE IF NOT EXISTS admin_requests ("
+                + "requestID INT AUTO_INCREMENT PRIMARY KEY, "
+                + "requester VARCHAR(255), "
+                + "description VARCHAR(1024), "
+                + "status VARCHAR(50), "
+                + "adminComments VARCHAR(1024), "
+                + "created_at TIMESTAMP, "
+                + "updated_at TIMESTAMP)";
+        statement.execute(adminRequestsTable);
+
+        String threadsTable = "CREATE TABLE IF NOT EXISTS discussion_threads ("
+                + "title VARCHAR(255) PRIMARY KEY, "
+                + "visible BOOLEAN DEFAULT TRUE, "
+                + "created_at TIMESTAMP)";
+        statement.execute(threadsTable);
+
     }
 
     /**
